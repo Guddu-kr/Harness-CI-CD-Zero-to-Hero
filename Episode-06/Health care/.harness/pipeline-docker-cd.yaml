@@ -157,16 +157,41 @@ pipeline:
 
                                 aws ecr get-login-password --region <+variable.aws_region> | docker login --username AWS --password-stdin <+variable.aws_account_id>.dkr.ecr.<+variable.aws_region>.amazonaws.com
 
-                                docker stop healthcare-website 2>/dev/null || true
-                                docker rm healthcare-website 2>/dev/null || true
-
                                 docker pull $IMAGE
 
-                                docker run -d \
-                                  --name healthcare-website \
-                                  -p 5000:5000 \
-                                  --restart unless-stopped \
-                                  $IMAGE
+                                #####################################################################################################
+                                # Blue-Green (2 containers) --> Run new on port 5001, test, then switch ports --> Downtime (zero)
+                                # 1. Start NEW container on temporary port (old still running!)
+                                # 2. Health check the NEW container
+                                # 3. Only if healthy → swap
+                                ####################################################################################################
+
+                                # 1. Blue-Green: Start NEW container on temporary port (old still running!)
+                                docker rm -f healthcare-new 2>/dev/null || true
+                                docker run -d --name healthcare-new -p 5001:5000 $IMAGE
+
+                                # 2. Health check the NEW container
+                                sleep 5
+                                HTTP_CODE=$(curl -so /dev/null -w "%{http_code}" http://localhost:5001/health 2>/dev/null || echo "000")
+
+                                # 3. Only if healthy → swap
+                                if [ "$HTTP_CODE" = "200" ]; then
+                                  # New is healthy → swap (zero downtime)
+                                  docker stop healthcare-website 2>/dev/null || true
+                                  docker rm healthcare-website 2>/dev/null || true
+                                  docker stop healthcare-new
+                                  docker rm healthcare-new
+                                  docker run -d --name healthcare-website -p 5000:5000 --restart unless-stopped $IMAGE
+
+                                else
+
+                                  # New is BAD → remove it, old stays running (zero downtime)
+                                  docker stop healthcare-new 2>/dev/null || true
+                                  docker rm healthcare-new 2>/dev/null || true
+                                  echo "New version FAILED health check. Old version still running."
+                                  exit 1
+                                fi
+
                   timeout: 10m
                   strategy:
                     repeat:

@@ -70,6 +70,26 @@ pipeline:
             steps:
               - step:
                   type: Run
+                  name: Install Dependencies
+                  identifier: install_deps
+                  spec:
+                    shell: Sh
+                    command: |-
+                      cd Episode-06/gocart
+                      npm ci
+
+              - step:
+                  type: Run
+                  name: Build Verification
+                  identifier: build_verify
+                  spec:
+                    shell: Sh
+                    command: |-
+                      cd Episode-06/gocart
+                      npm run build
+
+              - step:
+                  type: Run
                   name: Create ECR Repo
                   identifier: create_ecr
                   spec:
