@@ -200,8 +200,8 @@ pipeline:
                             spec:
                               script: |
                                 MANIFEST=$(aws ecr batch-get-image --repository-name healthcare-website --image-ids imageTag=<+pipeline.sequenceId> --region <+variable.aws_region> --query 'images[0].imageManifest' --output text)
-                                aws ecr put-image --repository-name healthcare-website --image-tag stable --image-manifest "$MANIFEST" --region <+variable.aws_region> || true
-                  timeout: 5m
+                                aws ecr put-image --repository-name healthcare-website --image-tag stable --image-manifest "$MANIFEST" --region <+variable.aws_region> > /dev/null 2>&1 || true
+                  timeout: 10m
                   strategy:
                     repeat:
                       items: <+stage.output.hosts>
