@@ -159,12 +159,13 @@ pipeline:
 
                                 docker pull $IMAGE
 
-                                #####################################################################################################
+                                # ================================================================================================
                                 # Blue-Green (2 containers) --> Run new on port 5001, test, then switch ports --> Downtime (zero)
                                 # 1. Start NEW container on temporary port (old still running!)
                                 # 2. Health check the NEW container
                                 # 3. Only if healthy → swap
-                                ####################################################################################################
+                                # ==================================================================================================
+                                
 
                                 # 1. Blue-Green: Start NEW container on temporary port (old still running!)
                                 docker rm -f healthcare-new 2>/dev/null || true
