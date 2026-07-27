@@ -105,6 +105,28 @@ Delegate Container (script runs here)
 
 ---
 
+### 7. Resource Constraint (Traffic Light)
+
+```
+Harness prevents multiple deployments to the same infrastructure
+at the same time (to avoid conflicts).
+
+Without "Allow simultaneous":
+  Pipeline Run #1 (deploying) → 🟢 Running
+  Pipeline Run #2 (triggered) → 🔴 BLOCKED (waits for #1 to finish)
+  Pipeline Run #2              → 🟢 Starts after #1 completes
+
+With "Allow simultaneous":
+  Pipeline Run #1 (deploying) → 🟢 Running
+  Pipeline Run #2 (triggered) → 🟢 Running (both deploy at same time)
+```
+
+**For single EC2:** Keep it blocked (don't allow simultaneous) — you don't want two deployments running `docker stop` + `docker run` at the same time on the same server.
+
+**If you see red light:** Go to Executions → Abort the old stuck/failed run → new run starts automatically.
+
+---
+
 ## ✅ Episode 6 Checklist
 
 - [ ] Understand CD (deliver app to users)

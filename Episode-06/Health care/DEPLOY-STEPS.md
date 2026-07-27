@@ -234,3 +234,6 @@ http://EC2-PUBLIC-IP:5000/api/doctors
 | "Service not found" | Create `healthcare-website` in Services UI |
 | "Environment not found" | Create `development` in Environments UI |
 | "Infrastructure not found" | Create `ec2-docker` inside development |
+| Resource Constraint (red light) | Abort old stuck execution in Executions tab |
+| Tag as Stable timeout | Step outputs large JSON — suppress with `> /dev/null 2>&1` |
+| `aws`/`docker` not found | Ensure EC2 has docker + aws-cli installed |

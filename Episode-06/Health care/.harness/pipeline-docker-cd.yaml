@@ -199,11 +199,16 @@ pipeline:
                             type: Inline
                             spec:
                               script: |
+                                TOKEN=$(curl -s -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600" 2>/dev/null)
+                                PUBLIC_IP=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null)
+                                if [ -z "$PUBLIC_IP" ]; then
+                                  PUBLIC_IP=$(curl -s ifconfig.me 2>/dev/null)
+                                fi
                                 echo "========================================="
                                 echo "  DEPLOYMENT SUCCESSFUL!"
-                                echo "  App URL: http://<+instance.host.hostName>:5000"
-                                echo "  Health:  http://<+instance.host.hostName>:5000/health"
-                                echo "  Doctors: http://<+instance.host.hostName>:5000/api/doctors"
+                                echo "  App URL: http://$PUBLIC_IP:5000"
+                                echo "  Health:  http://$PUBLIC_IP:5000/health"
+                                echo "  Doctors: http://$PUBLIC_IP:5000/api/doctors"
                                 echo "========================================="
                   timeout: 2m
                   strategy:
