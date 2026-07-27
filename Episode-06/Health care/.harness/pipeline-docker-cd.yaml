@@ -186,7 +186,8 @@ pipeline:
 
                                 else
 
-                                  # New is BAD → remove it, old stays running ( 2 sec downtime)
+                                  # New is BAD → remove it, old stays running ( Zero downtime)
+                                  # NEW is pass --> remove old version ( 2 sec downtime)
                                   # ===================================================================
                                   # For true zero downtime on EC2, add nginx proxy.
                                   # One-time setup (on EC2):
