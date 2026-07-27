@@ -172,7 +172,7 @@ pipeline:
                                 docker run -d --name healthcare-new -p 5001:5000 $IMAGE
 
                                 # 2. Health check the NEW container
-                                sleep 5
+                                sleep 15
                                 HTTP_CODE=$(curl -so /dev/null -w "%{http_code}" http://localhost:5001/health 2>/dev/null || echo "000")
 
                                 # 3. Only if healthy → swap
