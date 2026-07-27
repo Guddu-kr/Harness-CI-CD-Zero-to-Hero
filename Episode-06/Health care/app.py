@@ -5,7 +5,7 @@ Flask serves the static HTML + provides API endpoints
 
 from flask import Flask, send_from_directory, jsonify
 import os
-asdfghjkjhgfdsasdfghjk
+
 app = Flask(__name__, static_folder='.', static_url_path='')
 
 
@@ -38,4 +38,4 @@ def services():
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=False)
+    #app.run(host='0.0.0.0', port=5000, debug=False)
