@@ -112,13 +112,16 @@ Wait 2 min → Harness UI → **Connected** ✅
 7. Name: `eks-cluster` (ID auto-generates as `ekscluster`)
 8. Deployment Type: **Kubernetes**
 9. Setup: **Inline**
-10. Infrastructure Type: **Elastic Kubernetes Service** (Via Cloud Provider)
-11. Connector: `account.aws_account`
-12. Region: `us-east-1`
-13. Cluster: Select `harness-eks-cluster`
-14. Namespace: `gocart`
-15. Release name: Leave default
-16. Save
+10. Infrastructure Type: **Direct Connection → Kubernetes**
+11. Connector: **+ New Connector** → Kubernetes Cluster
+    - Name: `k8s-delegate`
+    - Details: **Use the credentials of a specific Harness Delegate**
+    - Delegates Setup: Select `eks-k8s-delegate` tag
+    - Connection Test: ✅
+    - Save
+12. Select connector: `k8s-delegate`
+13. Namespace: `gocart`
+14. Save
 
 ---
 
