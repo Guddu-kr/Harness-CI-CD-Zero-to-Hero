@@ -76,7 +76,7 @@ pipeline:
                     shell: Sh
                     command: |-
                       cd Episode-06/gocart
-                      npm ci
+                      npm install
 
               - step:
                   type: Run
