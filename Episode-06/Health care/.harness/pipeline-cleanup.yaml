@@ -16,49 +16,68 @@ pipeline:
         identifier: cleanup
         description: "Stop container and delete ECR"
         type: Deployment
-        failureStrategies:
-          - onFailure:
-              errors:
-                - AllErrors
-              action:
-                type: StageRollback
         spec:
           deploymentType: Ssh
           service:
             serviceRef: healthcarewebsite
           environment:
             environmentRef: development
-            deployToAll: false
             infrastructureDefinitions:
               - identifier: ec2docker
           execution:
             steps:
               - step:
-                  type: ShellScript
+                  type: Command
                   name: Stop Container
                   identifier: stop_container
                   spec:
-                    shell: Bash
-                    source:
-                      type: Inline
-                      spec:
-                        script: |-
-                          docker stop healthcare-website 2>/dev/null || true
-                          docker rm healthcare-website 2>/dev/null || true
                     onDelegate: false
+                    shell: Bash
+                    commandUnits:
+                      - identifier: Stop
+                        name: Stop
+                        type: Script
+                        spec:
+                          shell: Bash
+                          source:
+                            type: Inline
+                            spec:
+                              script: |
+                                docker stop healthcare-website 2>/dev/null || true
+                                docker rm healthcare-website 2>/dev/null || true
+                                docker stop healthcare-new 2>/dev/null || true
+                                docker rm healthcare-new 2>/dev/null || true
                   timeout: 5m
+                  strategy:
+                    repeat:
+                      items: <+stage.output.hosts>
 
               - step:
-                  type: ShellScript
+                  type: Command
                   name: Delete ECR
                   identifier: delete_ecr
                   spec:
-                    shell: Bash
-                    source:
-                      type: Inline
-                      spec:
-                        script: |-
-                          aws ecr delete-repository --repository-name healthcare-website --force --region <+variable.aws_region> || true
                     onDelegate: false
+                    shell: Bash
+                    commandUnits:
+                      - identifier: DeleteECR
+                        name: DeleteECR
+                        type: Script
+                        spec:
+                          shell: Bash
+                          source:
+                            type: Inline
+                            spec:
+                              script: |
+                                aws ecr delete-repository --repository-name healthcare-website --force --region <+variable.aws_region> || true
                   timeout: 5m
+                  strategy:
+                    repeat:
+                      items: <+stage.output.hosts>
             rollbackSteps: []
+        failureStrategies:
+          - onFailure:
+              errors:
+                - AllErrors
+              action:
+                type: StageRollback
