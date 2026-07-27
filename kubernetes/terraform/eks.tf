@@ -218,21 +218,23 @@ resource "aws_iam_role_policy_attachment" "node_AmazonEC2ContainerRegistryPullOn
 
 # ═══════════════════════════════════════════════════════════════════
 # EKS Access Entry — Allow GitHub Actions OIDC role to deploy
+# NOTE: Update github_actions_role_name variable with your actual role name
+# Find it in: GitHub repo → Settings → Secrets → Variables → AWS_ROLE_ARN
 # ═══════════════════════════════════════════════════════════════════
-data "aws_caller_identity" "current" {}
-
-resource "aws_eks_access_entry" "github_actions" {
-  cluster_name  = aws_eks_cluster.main.name
-  principal_arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.github_actions_role_name}"
-  type          = "STANDARD"
-}
-
-resource "aws_eks_access_policy_association" "github_actions" {
-  cluster_name  = aws_eks_cluster.main.name
-  principal_arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.github_actions_role_name}"
-  policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
-
-  access_scope {
-    type = "cluster"
-  }
-}
+# data "aws_caller_identity" "current" {}
+#
+# resource "aws_eks_access_entry" "github_actions" {
+#   cluster_name  = aws_eks_cluster.main.name
+#   principal_arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.github_actions_role_name}"
+#   type          = "STANDARD"
+# }
+#
+# resource "aws_eks_access_policy_association" "github_actions" {
+#   cluster_name  = aws_eks_cluster.main.name
+#   principal_arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.github_actions_role_name}"
+#   policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
+#
+#   access_scope {
+#     type = "cluster"
+#   }
+# }
