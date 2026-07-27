@@ -89,11 +89,13 @@ Wait 2 min → Harness UI → **Connected** ✅
    - File/Folder Path: `Episode-06/gocart/k8s/`
    - Submit
 6. **Artifacts** → **+ Add Artifact Source**:
-   - Type: Amazon ECR
+   - Artifact Repository Type: **ECR**
    - Connector: `account.aws_account`
-   - Region: your region
+   - Artifact Source Identifier: `ecr_image`
+   - Region: `us-east-1` (your region)
+   - Registry ID: leave empty
    - Image Path: `gocart`
-   - Tag: `<+input>`
+   - Tag: **Value** → `<+input>`
    - Submit
 7. Save
 

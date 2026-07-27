@@ -143,8 +143,10 @@ pipeline:
                 spec:
                   artifacts:
                     primary:
+                      # CHANGE THIS: Your Artifact Source Identifier (create in CD → Services → gocart → Artifacts) → ecr_image
                       primaryArtifactRef: ecr_image
                       sources:
+                        # CHANGE THIS: Must match the Artifact Source Identifier above
                         - identifier: ecr_image
                           type: Ecr
                           spec:
