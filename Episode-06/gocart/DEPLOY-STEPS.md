@@ -76,22 +76,25 @@ Wait 2 min → Harness UI → **Connected** ✅
 ## Step 4: Create Service in Harness UI
 
 1. CD → **Services** → **+ New Service**
-2. Name: `gocart`
-3. Deployment Type: **Kubernetes**
-4. **Manifests:**
+2. Name: `gocart` (ID auto-generates as `gocart`)
+3. Setup: **Inline**
+4. Deployment Type: **Kubernetes**
+5. **Manifests** → **+ Add Manifest**:
    - Type: K8s Manifest
-   - Store: GitHub
-   - Connector: `account.Github`
+   - Store: GitHub → Connector: `account.Github`
    - Repo: `Harness-CI-CD-Zero-to-Hero`
+   - Git Fetch Type: Latest from Branch
    - Branch: `master`
-   - Path: `Episode-06/gocart/k8s/`
-5. **Artifacts:**
+   - File/Folder Path: `Episode-06/gocart/k8s/`
+   - Submit
+6. **Artifacts** → **+ Add Artifact Source**:
    - Type: Amazon ECR
    - Connector: `account.aws_account`
-   - Region: (your region)
-   - Image: `gocart`
+   - Region: your region
+   - Image Path: `gocart`
    - Tag: `<+input>`
-6. Save
+   - Submit
+7. Save
 
 ---
 
