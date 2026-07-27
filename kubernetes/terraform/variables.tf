@@ -33,3 +33,9 @@ variable "bastion_key_name" {
   type        = string
   default     = ""
 }
+
+variable "github_actions_role_name" {
+  description = "IAM role name used by GitHub Actions OIDC (for EKS access)"
+  type        = string
+  default     = "github-actions-role"
+}
