@@ -68,6 +68,26 @@ pipeline:
             steps:
               - step:
                   type: Run
+                  name: Install Dependencies
+                  identifier: install_deps
+                  spec:
+                    shell: Sh
+                    command: |-
+                      cd "Episode-06/Health care"
+                      pip install -r requirements.txt
+
+              - step:
+                  type: Run
+                  name: Unit Tests
+                  identifier: unit_tests
+                  spec:
+                    shell: Sh
+                    command: |-
+                      cd "Episode-06/Health care"
+                      pytest test_app.py -v
+
+              - step:
+                  type: Run
                   name: Create ECR Repo
                   identifier: create_ecr
                   spec:
