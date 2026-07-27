@@ -165,7 +165,7 @@ pipeline:
                                 # 2. Health check the NEW container
                                 # 3. Only if healthy → swap
                                 # ==================================================================================================
-                                
+
 
                                 # 1. Blue-Green: Start NEW container on temporary port (old still running!)
                                 docker rm -f healthcare-new 2>/dev/null || true
@@ -186,7 +186,20 @@ pipeline:
 
                                 else
 
-                                  # New is BAD → remove it, old stays running (zero downtime)
+                                  # New is BAD → remove it, old stays running ( 2 sec downtime)
+                                  # ===================================================================
+                                  # For true zero downtime on EC2, add nginx proxy.
+                                  # One-time setup (on EC2):
+                                  # docker run -d --name nginx -p 80:80 --restart always nginx
+
+                                      # Pipeline does (during each deploy):
+                                      #  1. Start new app on port 5001
+                                      #  2. Health check 5001
+                                      #  3. Update nginx upstream → 5001
+                                      #  4. nginx reload
+                                      #  5. Stop old app on 5000
+                                  # =======================================================================    
+
                                   docker stop healthcare-new 2>/dev/null || true
                                   docker rm healthcare-new 2>/dev/null || true
                                   echo "New version FAILED health check. Old version still running."
