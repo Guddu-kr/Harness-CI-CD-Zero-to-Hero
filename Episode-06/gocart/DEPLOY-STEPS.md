@@ -101,17 +101,24 @@ Wait 2 min → Harness UI → **Connected** ✅
 
 ---
 
-## Step 5: Create Environment in Harness UI
+## Step 5: Create Environment + Infrastructure in Harness UI
 
-1. CD → **Environments** → **+ New Environment** (or reuse `development`)
+1. CD → **Environments** → **+ New Environment**
 2. Name: `development`
-3. Type: **Pre-Production**
-4. Inside environment → **+ New Infrastructure**
-5. Name: `eks-cluster` (ID will auto-generate as `ekscluster`)
-6. Type: **Kubernetes**
-7. Connector: **Inherit from Delegate** (select your `eks-k8s-delegate`)
-8. Namespace: `gocart`
-9. Save
+3. Environment Type: **Pre-Production**
+4. Setup: **Inline**
+5. Save
+6. Inside `development` → **+ Infrastructure Definition**
+7. Name: `eks-cluster` (ID auto-generates as `ekscluster`)
+8. Deployment Type: **Kubernetes**
+9. Setup: **Inline**
+10. Infrastructure Type: **Elastic Kubernetes Service** (Via Cloud Provider)
+11. Connector: `account.aws_account`
+12. Region: `us-east-1`
+13. Cluster: Select `harness-eks-cluster`
+14. Namespace: `gocart`
+15. Release name: Leave default
+16. Save
 
 ---
 
