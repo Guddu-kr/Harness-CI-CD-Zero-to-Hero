@@ -46,6 +46,15 @@ Deploy v2 → Health check FAILS → exit 1 → Rollback auto-triggers
   K8s:     kubectl rollout undo → Previous revision restored
 ```
 
+**When does rollback trigger vs when does pipeline just stop?**
+
+| Stage | If Fails | What Happens |
+|-------|----------|-------------|
+| Stage 1 (Install + Test + Build + Push) | Pipeline STOPS | No rollback — nothing was deployed |
+| Stage 2 (Deploy + Health Check) | **ROLLBACK** | Auto-restores previous version |
+
+Rollback only triggers when something **new was deployed** and fails. If build/test fails, old deployment stays untouched.
+
 ### 5. Authentication Pattern
 
 ```
@@ -313,20 +322,29 @@ Episode-06/
 
 ## 🧪 How to Test Rollback
 
+### When Rollback Triggers vs Pipeline Stops
+
+| What You Break | Stage 1 (Build) | Stage 2 (Deploy) | Rollback? |
+|---------------|-----------------|-------------------|-----------|
+| `requirements.txt` (bad package) | ❌ Install fails | Never runs | **No** — pipeline stops |
+| `test_app.py` (fail a test) | ❌ Tests fail | Never runs | **No** — pipeline stops |
+| `app.py` (syntax error like `erxtcfgvhbjkmle`) | ✅ Image builds | ❌ Flask crashes → health fails | **YES ✅** |
+| `k8s/deployment.yaml` (invalid YAML) | ✅ Image builds | ❌ kubectl fails | **YES ✅** |
+
 ### Healthcare Website (Docker on EC2)
 
-| What to Break | Stage 1 | Stage 2 | Rollback? |
-|---------------|---------|---------|-----------|
-| `requirements.txt` (add invalid package) | ❌ Build fails | Never runs | No |
-| `Dockerfile` (bad RUN command) | ❌ Build fails | Never runs | No |
-| **`app.py`** (add `erxtcfgvhbjkmle` between imports) | ✅ Passes (image builds) | ❌ Flask crashes → `/health` no response | **YES ✅** |
-
-**Best test for Healthcare:**
+**Best test for rollback:**
 1. Run pipeline → success → `:stable` tagged ✅
 2. Add garbage text in `app.py` (like `erxtcfgvhbjkmle` on line 5)
 3. Push → Run pipeline
 4. Stage 1: Image builds fine ✅ (Python doesn't check syntax at build time)
 5. Stage 2: Container starts → Flask crashes → `/health` no response → Health check FAILS → **Rollback triggers** → pulls `:stable` → old version back ✅
+
+**Test pipeline STOP (no rollback):**
+1. Add `invalid_package_xyz` in `requirements.txt`
+2. Push → Run pipeline
+3. Stage 1: Install Dependencies FAILS → pipeline STOPS
+4. Stage 2: Never runs. Old deployment on EC2 stays untouched. No rollback.
 
 ---
 
