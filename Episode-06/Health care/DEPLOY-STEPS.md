@@ -24,7 +24,7 @@ Create Service + Environment in Harness UI → Import Pipeline → Run → EC2-I
 ## Step 1: Create EC2 Instance
 
 1. AWS Console → EC2 → Launch Instance
-2. Name: `harness-cd-delegate`
+2. Name: `cd-docker-delegate`
 3. OS: Amazon Linux 2023
 4. Type: `t2.medium` (2 CPU, 4 GB)
 5. Key pair: Create or use existing → **Download .pem file**
