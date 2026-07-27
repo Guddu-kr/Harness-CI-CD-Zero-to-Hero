@@ -44,16 +44,32 @@ kubectl get nodes
 
 ## Step 3: Install Kubernetes Delegate
 
-1. Harness UI → Project Settings → **Delegates** → **+ New Delegate** → **Kubernetes**
+1. Harness UI → Project Settings → **Delegates** → **+ New Delegate** → **Helm Chart**
 2. Name: `eks-k8s-delegate`
-3. Download YAML → Apply on Bastion:
+3. Copy the Helm install command shown in Harness UI
+4. On Bastion, run:
 
 ```bash
-kubectl apply -f harness-delegate.yaml
+# Add Harness Helm repo
+helm repo add harness-delegate https://app.harness.io/storage/harness-download/delegate-helm-chart/
+helm repo update
+
+# Install delegate (paste values from Harness UI)
+helm upgrade -i eks-k8s-delegate harness-delegate/harness-delegate-ng \
+  --namespace harness-delegate-ng --create-namespace \
+  --set delegateName=eks-k8s-delegate \
+  --set accountId=YOUR_ACCOUNT_ID \
+  --set delegateToken=YOUR_TOKEN \
+  --set managerEndpoint=https://app.harness.io/gratis \
+  --set delegateDockerImage=harness/delegate:latest \
+  --set replicas=1 \
+  --set upgrader.enabled=true
+
+# Verify
 kubectl get pods -n harness-delegate-ng
 ```
 
-Wait 2 min → **Connected** ✅
+Wait 2 min → Harness UI → **Connected** ✅
 
 ---
 
