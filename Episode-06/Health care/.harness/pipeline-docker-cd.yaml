@@ -184,6 +184,35 @@ pipeline:
 
               - step:
                   type: Command
+                  name: Deployment Info
+                  identifier: deployment_info
+                  spec:
+                    onDelegate: false
+                    shell: Bash
+                    commandUnits:
+                      - identifier: Info
+                        name: Info
+                        type: Script
+                        spec:
+                          shell: Bash
+                          source:
+                            type: Inline
+                            spec:
+                              script: |
+                                PUBLIC_IP=$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4)
+                                echo "========================================="
+                                echo "  DEPLOYMENT SUCCESSFUL!"
+                                echo "  App URL: http://$PUBLIC_IP:5000"
+                                echo "  Health:  http://$PUBLIC_IP:5000/health"
+                                echo "  Doctors: http://$PUBLIC_IP:5000/api/doctors"
+                                echo "========================================="
+                  timeout: 2m
+                  strategy:
+                    repeat:
+                      items: <+stage.output.hosts>
+
+              - step:
+                  type: Command
                   name: Tag as Stable
                   identifier: tag_stable
                   spec:
@@ -199,8 +228,11 @@ pipeline:
                             type: Inline
                             spec:
                               script: |
-                                MANIFEST=$(aws ecr batch-get-image --repository-name healthcare-website --image-ids imageTag=<+pipeline.sequenceId> --region <+variable.aws_region> --query 'images[0].imageManifest' --output text)
-                                aws ecr put-image --repository-name healthcare-website --image-tag stable --image-manifest "$MANIFEST" --region <+variable.aws_region> > /dev/null 2>&1 || true
+                                MANIFEST=$(aws ecr batch-get-image --repository-name healthcare-website --image-ids imageTag=<+pipeline.sequenceId> --region <+variable.aws_region> --query 'images[0].imageManifest' --output text 2>/dev/null)
+                                if [ -n "$MANIFEST" ] && [ "$MANIFEST" != "None" ]; then
+                                  aws ecr put-image --repository-name healthcare-website --image-tag stable --image-manifest "$MANIFEST" --region <+variable.aws_region> 2>&1 | tail -1
+                                fi
+                                echo "Done"
                   timeout: 10m
                   strategy:
                     repeat:
