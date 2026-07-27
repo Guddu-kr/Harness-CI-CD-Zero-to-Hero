@@ -109,7 +109,7 @@ Wait 2 min → Harness UI → **Connected** ✅
 4. Setup: **Inline**
 5. Save
 6. Inside `development` → **+ Infrastructure Definition**
-7. Name: `eks-cluster` (ID auto-generates as `ekscluster`)
+7. Name: `k8s-delegate` (ID auto-generates as `k8sdelegate`)
 8. Deployment Type: **Kubernetes**
 9. Setup: **Inline**
 10. Infrastructure Type: **Direct Connection → Kubernetes**

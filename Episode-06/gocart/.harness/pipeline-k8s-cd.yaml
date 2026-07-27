@@ -156,8 +156,8 @@ pipeline:
             environmentRef: development
             deployToAll: false
             infrastructureDefinitions:
-              # CHANGE THIS: Your infrastructure ID (create inside environment → Kubernetes → Inherit from Delegate)
-              - identifier: ekscluster
+              # CHANGE THIS: Your infrastructure ID (create inside Environment) → k8sdelegate
+              - identifier: k8sdelegate
           execution:
             steps:
               - step:
