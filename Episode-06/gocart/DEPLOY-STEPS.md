@@ -83,6 +83,7 @@ Wait 2 min → Harness UI → **Connected** ✅
    - Type: K8s Manifest
    - Store: GitHub → Connector: `account.Github`
    - Repo: `Harness-CI-CD-Zero-to-Hero`
+   - Manifest Identifier: `k8s_manifests`
    - Git Fetch Type: Latest from Branch
    - Branch: `master`
    - File/Folder Path: `Episode-06/gocart/k8s/`
