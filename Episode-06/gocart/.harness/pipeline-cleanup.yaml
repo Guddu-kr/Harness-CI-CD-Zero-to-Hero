@@ -27,6 +27,12 @@ pipeline:
         identifier: cleanup
         description: "Delete K8s resources + ECR repo"
         type: Deployment
+        failureStrategies:
+          - onFailure:
+              errors:
+                - AllErrors
+              action:
+                type: Ignore
         spec:
           deploymentType: Kubernetes
           service:
