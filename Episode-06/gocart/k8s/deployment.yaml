@@ -42,7 +42,7 @@ spec:
     spec:
       containers:
         - name: gocart
-          image: <+artifacts.primary.image>
+          image: { { .Values.image } }
           ports:
             - containerPort: 3000
               name: http

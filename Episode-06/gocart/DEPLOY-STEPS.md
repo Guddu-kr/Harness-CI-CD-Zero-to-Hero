@@ -87,6 +87,7 @@ Wait 2 min → Harness UI → **Connected** ✅
    - Git Fetch Type: Latest from Branch
    - Branch: `master`
    - File/Folder Path: `Episode-06/gocart/k8s/`
+   - Values YAML path: `Episode-06/gocart/k8s/values.yaml`
    - Submit
 6. **Artifacts** → **+ Add Artifact Source**:
    - Artifact Repository Type: **ECR**
