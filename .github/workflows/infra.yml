@@ -235,7 +235,8 @@ jobs:
           kubectl get pvc -A -o jsonpath='{range .items[*]}{.metadata.namespace}{" "}{.metadata.name}{"\n"}{end}' > pvcs.txt || true
           while read -r NAMESPACE NAME; do
             [ -z "${NAMESPACE}" ] && continue
-            kubectl delete pvc "${NAME}" -n "${NAMESPACE}" --ignore-not-found=true || true
+            kubectl patch pvc "${NAME}" -n "${NAMESPACE}" -p '{"metadata":{"finalizers":null}}' 2>/dev/null || true
+            kubectl delete pvc "${NAME}" -n "${NAMESPACE}" --ignore-not-found=true --timeout=30s || true
           done < pvcs.txt
 
           # Delete non-system namespaces
@@ -245,7 +246,8 @@ jobs:
             if [ "${NAMESPACE}" = "kube-system" ] || [ "${NAMESPACE}" = "kube-public" ] || [ "${NAMESPACE}" = "kube-node-lease" ] || [ "${NAMESPACE}" = "default" ]; then
               continue
             fi
-            kubectl delete namespace "${NAMESPACE}" --ignore-not-found=true --wait=false || true
+            kubectl delete namespace "${NAMESPACE}" --ignore-not-found=true --wait=false --timeout=60s || true
+            kubectl patch namespace "${NAMESPACE}" -p '{"metadata":{"finalizers":null}}' --type=merge 2>/dev/null || true
           done < namespaces.txt
 
           echo "Waiting 180s for LBs and ENIs to be released..."
