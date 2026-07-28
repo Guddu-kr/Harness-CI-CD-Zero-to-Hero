@@ -42,7 +42,7 @@ spec:
     spec:
       containers:
         - name: gocart
-          image: <+artifact.image>
+          image: <+artifacts.primary.image>
           ports:
             - containerPort: 3000
               name: http
