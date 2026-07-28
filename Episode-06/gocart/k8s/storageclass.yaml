@@ -1,0 +1,18 @@
+# ============================================
+# STORAGECLASS: Tells EKS Auto Mode how to provision EBS volumes
+# EKS Auto Mode does NOT create a StorageClass automatically!
+# You MUST create one referencing ebs.csi.eks.amazonaws.com
+#
+# This enables: PersistentVolumeClaim → auto-provisions gp3 EBS volume
+# ============================================
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: auto-ebs-sc
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+provisioner: ebs.csi.eks.amazonaws.com
+volumeBindingMode: WaitForFirstConsumer
+parameters:
+  type: gp3
+  encrypted: "true"
