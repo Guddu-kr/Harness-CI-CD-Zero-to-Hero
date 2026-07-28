@@ -8,6 +8,8 @@ kind: ConfigMap
 metadata:
   name: gocart-config
   namespace: gocart
+  annotations:
+    harness.io/skip-versioning: "true"
   labels:
     app: gocart
 data:

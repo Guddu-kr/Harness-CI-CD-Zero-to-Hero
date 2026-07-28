@@ -215,7 +215,11 @@ aws ecr delete-repository --repository-name gocart --force --region us-east-1
 | "No eligible delegates" | `kubectl get pods -n harness-delegate-ng` |
 | "Service not found" | Create `gocart` in Services UI |
 | "Environment not found" | Create `development` in Environments UI |
-| "Infrastructure not found" | Create `eks-cluster` inside development |
+| "Infrastructure not found" | Create `k8s-delegate` inside development |
 | Pods `ImagePullBackOff` | ECR image missing — check Stage 1 |
 | Pods `CrashLoopBackOff` | `kubectl logs deployment/gocart -n gocart` |
 | No LoadBalancer URL | Wait 2-3 min |
+| `<+artifact.image>` InvalidImageName | Service artifact not configured — see below |
+| PVC unbound / no StorageClass | Run Step 9.5 above |
+
+
