@@ -113,7 +113,7 @@ pipeline:
                     account: <+variable.aws_account_id>
                     imageName: gocart
                     tags:
-                      - <+pipeline.sequenceId>
+                      - v<+pipeline.sequenceId>
                       - latest
                     dockerfile: Episode-06/gocart/Dockerfile
                     context: Episode-06/gocart
@@ -150,7 +150,7 @@ pipeline:
                         - identifier: ecr_image
                           type: Ecr
                           spec:
-                            tag: <+pipeline.sequenceId>
+                            tag: v<+pipeline.sequenceId>
           environment:
             # CHANGE THIS: Your environment ID (create in CD → Environments)
             environmentRef: development

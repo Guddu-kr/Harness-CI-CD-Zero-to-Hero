@@ -30,7 +30,7 @@ spec:
   strategy:
     type: RollingUpdate
     rollingUpdate:
-      maxSurge: 1
+      maxSurge: 1 # Create 1 new pod BEFORE killing old
       maxUnavailable: 0
   selector:
     matchLabels:
