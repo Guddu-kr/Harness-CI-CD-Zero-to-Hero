@@ -36,8 +36,8 @@ spec:
       containers:
         - name: gocart
           # Harness replaces image.repository and image.tag via artifact source
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          image: "{{ .Values.image }}"
+          imagePullPolicy: {{ .Values.pullPolicy }}
           ports:
             - containerPort: {{ .Values.service.targetPort }}
               name: http

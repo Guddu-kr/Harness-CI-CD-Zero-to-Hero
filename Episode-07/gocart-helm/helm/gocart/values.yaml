@@ -16,11 +16,9 @@
 replicaCount: 2
 
 # Docker image settings
-# Harness replaces these via artifact source at deploy time
-image:
-  repository: "" # Harness fills: 713939171080.dkr.ecr.us-east-1.amazonaws.com/gocart
-  tag: "" # Harness fills: v5 (from pipeline.sequenceId)
-  pullPolicy: IfNotPresent
+# Harness replaces <+artifact.image> at deploy time with full ECR URL:tag
+image: <+artifact.image>
+pullPolicy: IfNotPresent
 
 # Kubernetes Service
 service:

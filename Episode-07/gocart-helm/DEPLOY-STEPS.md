@@ -77,12 +77,12 @@ Wait 2 min → Harness UI → **Connected** ✅
 
 ---
 
-## Step 3: Create Service in Harness UI (Helm type)
+## Step 3: Create Service in Harness UI (Native Helm type)
 
 1. CD → **Services** → **+ New Service**
 2. Name: `gocart-helm` (ID auto-generates as `gocarthelm`)
 3. Setup: **Inline**
-4. Deployment Type: **Kubernetes**
+4. Deployment Type: **Native Helm**
 5. **Manifests** → **+ Add Manifest**:
    - Type: **Helm Chart**
    - Helm Version: **V3**
@@ -116,7 +116,7 @@ Wait 2 min → Harness UI → **Connected** ✅
 5. Save
 6. Inside `development` → **+ Infrastructure Definition**
 7. Name: `k8s-delegate` (ID auto-generates as `k8sdelegate`)
-8. Deployment Type: **Kubernetes**
+8. Deployment Type: **Native Helm**
 9. Setup: **Inline**
 10. Infrastructure Type: **Direct Connection → Kubernetes**
 11. Connector: **+ New Connector** → Kubernetes Cluster
@@ -156,12 +156,12 @@ git push origin master
 
 ```
 Stage 1: Build & Push to ECR ✅
-Stage 2: Deploy with Helm to EKS ✅
-  ├── Helm Deploy (renders templates + kubectl apply)
+Stage 2: Deploy with Native Helm to EKS ✅
+  ├── HelmDeploy (Harness native — helm install/upgrade)
   ├── Verify Deployment (pods + LoadBalancer)
   ├── Health Check (HTTP 200)
   └── Rollback (auto on failure):
-      └── Helm Rollback (reverts to previous Helm revision)
+      └── HelmRollback (reverts to previous Helm revision)
 ```
 
 ---

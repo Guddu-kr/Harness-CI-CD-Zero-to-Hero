@@ -116,13 +116,13 @@ pipeline:
               action:
                 type: StageRollback
         spec:
-          deploymentType: Kubernetes
+          deploymentType: NativeHelm
           service:
             # CHANGE THIS: Your service ID (create in CD → Services → Kubernetes + Helm Chart)
             serviceRef: gocarthelm
             serviceInputs:
               serviceDefinition:
-                type: Kubernetes
+                type: NativeHelm
                 spec:
                   artifacts:
                     primary:
@@ -144,11 +144,10 @@ pipeline:
               - step:
                   name: Helm Deploy
                   identifier: helm_deploy
-                  type: K8sRollingDeploy
+                  type: HelmDeploy
                   timeout: 10m
                   spec:
                     skipDryRun: false
-                    pruningEnabled: false
 
               - step:
                   type: ShellScript
@@ -196,7 +195,6 @@ pipeline:
               - step:
                   name: Helm Rollback
                   identifier: helm_rollback
-                  type: K8sRollingRollback
+                  type: HelmRollback
                   timeout: 10m
-                  spec:
-                    pruningEnabled: false
+                  spec: {}
