@@ -3,9 +3,9 @@
 #
 # KEY VALUES FROM values.yaml:
 #   {{ .Values.replicaCount }}           → 2 (number of pods)
-#   {{ .Values.image.repository }}       → ECR URL (filled by Harness at deploy time)
-#   {{ .Values.image.tag }}              → v5 (filled by Harness at deploy time)
-#   {{ .Values.image.pullPolicy }}       → IfNotPresent
+#   .Values.image       → ECR URL (filled by Harness at deploy time)
+#   .Values.image              → v5 (filled by Harness at deploy time)
+#   .Values.pullPolicy       → IfNotPresent
 #   {{ .Values.service.targetPort }}     → 3000
 #   {{- toYaml .Values.resources | nindent 12 }} → copies entire resources block from values.yaml
 #
