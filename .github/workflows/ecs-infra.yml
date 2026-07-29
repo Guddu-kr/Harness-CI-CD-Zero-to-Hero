@@ -92,10 +92,6 @@ jobs:
         run: |
           CLUSTER=$(terraform output -raw ecs_cluster_name)
           ALB_URL=$(terraform output -raw app_url)
-          BLUE_TG=$(terraform output -raw blue_target_group_arn)
-          GREEN_TG=$(terraform output -raw green_target_group_arn)
-          PROD_LISTENER=$(terraform output -raw prod_listener_arn)
-          STAGE_LISTENER=$(terraform output -raw stage_listener_arn)
 
           {
             echo "## 🎉 ECS Fargate Infrastructure Ready"
@@ -103,16 +99,14 @@ jobs:
             echo "| Resource | Value |"
             echo "|---|---|"
             echo "| ECS Cluster | ${CLUSTER} |"
-            echo "| ALB URL | ${ALB_URL} |"
-            echo "| Blue Target Group | ${BLUE_TG} |"
-            echo "| Green Target Group | ${GREEN_TG} |"
-            echo "| Prod Listener (80) | ${PROD_LISTENER} |"
-            echo "| Stage Listener (8080) | ${STAGE_LISTENER} |"
+            echo "| App URL | ${ALB_URL} |"
             echo ""
             echo "### Next Steps"
             echo "1. Create Harness Service (ECS type)"
             echo "2. Import pipeline from Git"
             echo "3. Run pipeline → Blue-Green deploy"
+            echo ""
+            echo "> 💰 Cost: ~\$0.50/day while running. Destroy when done!"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Pre-Destroy ECS Cleanup
