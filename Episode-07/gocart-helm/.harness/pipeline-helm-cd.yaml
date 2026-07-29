@@ -141,22 +141,8 @@ pipeline:
               - identifier: k8sdelegate
           execution:
             steps:
-              # Helm requires namespace to exist BEFORE install (--namespace gocart)
-              # namespace.yaml in chart also creates it, but Helm checks FIRST
-              # This step ensures namespace exists before helm install runs
-              - step:
-                  type: ShellScript
-                  name: Create Namespace
-                  identifier: create_namespace
-                  spec:
-                    shell: Bash
-                    source:
-                      type: Inline
-                      spec:
-                        script: |-
-                          kubectl create namespace gocart --dry-run=client -o yaml | kubectl apply -f -
-                    onDelegate: true
-                  timeout: 2m
+              # --create-namespace flag on HelmDeploy creates the namespace automatically
+              # No separate step needed — removed namespace.yaml from chart to avoid conflict
 
               - step:
                   name: Helm Deploy
@@ -166,6 +152,8 @@ pipeline:
                   spec:
                     skipDryRun: false
                     commandFlags:
+                      # --create-namespace: Creates the namespace if it doesn't exist
+                      # Without this, helm install fails with "namespace not found"
                       - commandType: Install
                         flag: "--create-namespace"
                       - commandType: Upgrade
