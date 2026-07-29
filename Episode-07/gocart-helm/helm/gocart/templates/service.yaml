@@ -1,0 +1,35 @@
+# ============================================
+# SERVICE — Exposes GoCart to the internet via LoadBalancer
+#
+# {{ .Values.service.type }}       → "LoadBalancer" (creates AWS NLB)
+# {{ .Values.service.port }}       → 80 (external port users hit)
+# {{ .Values.service.targetPort }} → 3000 (container port)
+#
+# {{- with .Values.service.annotations }}
+#   "with" → only render this block IF annotations exist in values.yaml
+#   {{- toYaml . | nindent 4 }} → copies annotations as-is
+# {{- end }}
+#
+# Annotation: service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing
+#   → Makes NLB accessible from internet (default is internal-only)
+# ============================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: gocart
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "gocart.labels" . | nindent 4 }}
+  {{- with .Values.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.service.type }}
+  selector:
+    app: gocart
+  ports:
+    - protocol: TCP
+      port: {{ .Values.service.port }}
+      targetPort: {{ .Values.service.targetPort }}
+      name: http

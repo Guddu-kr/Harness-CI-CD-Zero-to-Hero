@@ -1,0 +1,12 @@
+# ============================================
+# NAMESPACE — Logical isolation for GoCart
+#
+# {{ .Values.namespace }} → reads "namespace" from values.yaml → "gocart"
+# {{ include "gocart.labels" . }} → calls the labels template from _helpers.tpl
+# ============================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.namespace }}
+  labels:
+    {{- include "gocart.labels" . | nindent 4 }}

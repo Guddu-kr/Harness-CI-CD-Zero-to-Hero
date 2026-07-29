@@ -1,0 +1,16 @@
+# ============================================
+# {{ .Values.postgres.storageClass }} → reads from values.yaml → "auto-ebs-sc"
+#
+# EKS Auto Mode requires this — it does NOT create a StorageClass automatically
+# ============================================
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: {{ .Values.postgres.storageClass }}
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+provisioner: ebs.csi.eks.amazonaws.com
+volumeBindingMode: WaitForFirstConsumer
+parameters:
+  type: gp3
+  encrypted: "true"

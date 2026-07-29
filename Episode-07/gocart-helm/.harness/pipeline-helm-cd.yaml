@@ -1,0 +1,202 @@
+# ============================================
+# PIPELINE: Episode 7, Topic 1 — Deploy GoCart to EKS with Helm
+# ============================================
+# Stage 1: Build & Push to ECR (CI stage, Harness Cloud)
+# Stage 2: Deploy to EKS using Helm (CD Deployment stage, K8s Delegate)
+#
+# ============================================
+# CHANGE THESE VALUES:
+# ============================================
+#   projectIdentifier: HarnessCICDZerotoHero
+#   orgIdentifier: default
+#   connectorRef: account.Github
+#   repoName: Harness-CI-CD-Zero-to-Hero
+#   connectorRef: account.aws_account
+#   serviceRef: gocarthelm
+#   environmentRef: development
+#   infrastructureDefinitions: k8sdelegate
+# ============================================
+pipeline:
+  name: episode7-gocart-helm-cd
+  identifier: episode7_gocart_helm_cd
+  # CHANGE THIS: Your project ID
+  projectIdentifier: HarnessCICDZerotoHero
+  # CHANGE THIS: Your org name
+  orgIdentifier: default
+  tags: {}
+  properties:
+    ci:
+      codebase:
+        # CHANGE THIS: Your GitHub connector
+        connectorRef: account.Github
+        # CHANGE THIS: Your repo name
+        repoName: Harness-CI-CD-Zero-to-Hero
+        build: <+input>
+  stages:
+    # ============================================
+    # STAGE 1: Build & Push to ECR (CI stage)
+    # ============================================
+    - stage:
+        name: build-and-push
+        identifier: build_and_push
+        description: "Build GoCart Docker image and push to ECR"
+        type: CI
+        spec:
+          cloneCodebase: true
+          platform:
+            os: Linux
+            arch: Amd64
+          runtime:
+            type: Cloud
+            spec: {}
+          execution:
+            steps:
+              - step:
+                  type: Run
+                  name: Install Dependencies
+                  identifier: install_deps
+                  spec:
+                    shell: Sh
+                    command: |-
+                      cd Episode-07/gocart-helm
+                      npm install
+
+              - step:
+                  type: Run
+                  name: Build Verification
+                  identifier: build_verify
+                  spec:
+                    shell: Sh
+                    command: |-
+                      cd Episode-07/gocart-helm
+                      npm run build
+
+              - step:
+                  type: Run
+                  name: Create ECR Repo
+                  identifier: create_ecr
+                  spec:
+                    shell: Sh
+                    image: amazon/aws-cli:latest
+                    envVariables:
+                      AWS_ACCESS_KEY_ID: <+secrets.getValue("aws_access_key_id")>
+                      AWS_SECRET_ACCESS_KEY: <+secrets.getValue("aws_secret_access_key")>
+                      AWS_DEFAULT_REGION: <+variable.aws_region>
+                    command: |-
+                      aws ecr create-repository --repository-name gocart --region <+variable.aws_region> 2>/dev/null || echo "Repository already exists"
+
+              - step:
+                  type: BuildAndPushECR
+                  name: Build and Push to ECR
+                  identifier: build_push_ecr
+                  spec:
+                    # CHANGE THIS: Your AWS OIDC connector
+                    connectorRef: account.aws_account
+                    region: <+variable.aws_region>
+                    account: <+variable.aws_account_id>
+                    imageName: gocart
+                    tags:
+                      - v<+pipeline.sequenceId>
+                      - latest
+                    dockerfile: Episode-07/gocart-helm/Dockerfile
+                    context: Episode-07/gocart-helm
+
+    # ============================================
+    # STAGE 2: Deploy to EKS with Helm (CD stage)
+    # ============================================
+    - stage:
+        name: deploy-helm
+        identifier: deploy_helm
+        description: "Deploy GoCart using Helm chart to EKS"
+        type: Deployment
+        failureStrategies:
+          - onFailure:
+              errors:
+                - AllErrors
+              action:
+                type: StageRollback
+        spec:
+          deploymentType: Kubernetes
+          service:
+            # CHANGE THIS: Your service ID (create in CD → Services → Kubernetes + Helm Chart)
+            serviceRef: gocarthelm
+            serviceInputs:
+              serviceDefinition:
+                type: Kubernetes
+                spec:
+                  artifacts:
+                    primary:
+                      primaryArtifactRef: ecr_image
+                      sources:
+                        - identifier: ecr_image
+                          type: Ecr
+                          spec:
+                            tag: v<+pipeline.sequenceId>
+          environment:
+            # CHANGE THIS: Your environment ID
+            environmentRef: development
+            deployToAll: false
+            infrastructureDefinitions:
+              # CHANGE THIS: Your infrastructure ID
+              - identifier: k8sdelegate
+          execution:
+            steps:
+              - step:
+                  name: Helm Deploy
+                  identifier: helm_deploy
+                  type: K8sRollingDeploy
+                  timeout: 10m
+                  spec:
+                    skipDryRun: false
+                    pruningEnabled: false
+
+              - step:
+                  type: ShellScript
+                  name: Verify Deployment
+                  identifier: verify_deployment
+                  spec:
+                    shell: Bash
+                    source:
+                      type: Inline
+                      spec:
+                        script: |-
+                          kubectl get pods -n gocart
+                          kubectl get svc gocart -n gocart
+                          LB=$(kubectl get svc gocart -n gocart -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "pending")
+                          echo "LoadBalancer: http://$LB"
+                    onDelegate: true
+                  timeout: 5m
+
+              - step:
+                  type: ShellScript
+                  name: Health Check
+                  identifier: health_check
+                  spec:
+                    shell: Bash
+                    source:
+                      type: Inline
+                      spec:
+                        script: |-
+                          LB=$(kubectl get svc gocart -n gocart -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null)
+                          for i in $(seq 1 18); do
+                            HTTP_CODE=$(curl -so /dev/null -w "%{http_code}" http://$LB/ 2>/dev/null || echo "000")
+                            [ "$HTTP_CODE" = "200" ] && break
+                            sleep 10
+                          done
+                          if [ "$HTTP_CODE" = "200" ]; then
+                            echo "Health check PASSED (HTTP 200)"
+                          else
+                            echo "Health check FAILED (HTTP $HTTP_CODE)"
+                            exit 1
+                          fi
+                    onDelegate: true
+                  timeout: 5m
+
+            rollbackSteps:
+              - step:
+                  name: Helm Rollback
+                  identifier: helm_rollback
+                  type: K8sRollingRollback
+                  timeout: 10m
+                  spec:
+                    pruningEnabled: false

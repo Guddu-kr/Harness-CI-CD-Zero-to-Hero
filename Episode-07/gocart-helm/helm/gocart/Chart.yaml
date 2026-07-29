@@ -1,0 +1,17 @@
+# ============================================
+# Chart.yaml — The "ID card" of this Helm chart
+# This file tells Helm: what is this chart, who made it, what version
+# ============================================
+
+apiVersion: v2 # Helm chart API version
+name: gocart # Chart name
+description: GoCart E-Commerce Next.js application
+type: application
+version: 1.0.0 # Chart version (bump when chart structure changes)
+appVersion: "1.0.0" # App version (bump when your app code changes)
+maintainers:
+  - name: Yaswanth Reddy
+
+#Chart.yaml version is only bumped when:
+#You change the chart structure (add new templates, change values schema)
+#NOT for every deploy

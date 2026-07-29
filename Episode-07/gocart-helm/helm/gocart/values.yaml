@@ -1,0 +1,75 @@
+# ============================================
+# Change values HERE → templates automatically use them
+# No need to edit template files directly!
+#
+# HOW IT WORKS:
+#   values.yaml says:    replicaCount: 2
+#   deployment.yaml uses: {{ .Values.replicaCount }}  → becomes "2"
+#
+# MULTI-ENVIRONMENT:
+#   values.yaml       = default (dev)
+#   values-prod.yaml  = override for production (replicaCount: 5)
+#   helm install -f values-prod.yaml
+# ============================================
+
+# Number of GoCart pods to run
+replicaCount: 2
+
+# Docker image settings
+# Harness replaces these via artifact source at deploy time
+image:
+  repository: "" # Harness fills: 713939171080.dkr.ecr.us-east-1.amazonaws.com/gocart
+  tag: "" # Harness fills: v5 (from pipeline.sequenceId)
+  pullPolicy: IfNotPresent
+
+# Kubernetes Service
+service:
+  type: LoadBalancer
+  port: 80
+  targetPort: 3000
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing
+
+# Container resource limits
+resources:
+  requests: # Minimum guaranteed
+    memory: "256Mi"
+    cpu: "250m"
+  limits: # Maximum allowed
+    memory: "512Mi"
+    cpu: "500m"
+
+# Health checks
+readinessProbe:
+  path: / # URL to check
+  port: 3000
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  failureThreshold: 3
+
+livenessProbe:
+  path: /
+  port: 3000
+  initialDelaySeconds: 45
+  periodSeconds: 15
+  failureThreshold: 3
+
+# Environment variables injected into GoCart container
+env:
+  NODE_ENV: "production"
+  APP_NAME: "GoCart E-Commerce"
+  PORT: "3000"
+  NEXT_TELEMETRY_DISABLED: "1"
+
+# PostgreSQL database settings
+postgres:
+  enabled: true # Set false to skip postgres deployment
+  image: postgres:16-alpine
+  storage: 1Gi
+  storageClass: auto-ebs-sc # EKS Auto Mode storage class
+  user: gocart
+  password: gocart123
+  database: gocart
+
+# Kubernetes namespace for all resources
+namespace: gocart

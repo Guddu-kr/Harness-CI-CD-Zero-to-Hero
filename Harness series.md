@@ -245,8 +245,7 @@ Observability:
 
 * Prometheus
 * Grafana
-* Datadog
-* New Relic
+* EFK
 
 Notifications:
 
