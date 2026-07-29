@@ -1,0 +1,210 @@
+name: ECS Fargate Terraform
+
+run-name: >-
+  ${{
+    github.event.inputs.action == 'apply'
+    && 'ECS Fargate Terraform Apply'
+    || github.event.inputs.action == 'destroy'
+    && 'ECS Fargate Terraform Destroy'
+    || 'ECS Fargate Terraform Plan'
+  }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "Choose action"
+        required: true
+        default: plan
+        type: choice
+        options:
+          - plan
+          - apply
+          - destroy
+      confirm_destroy:
+        description: "Type yes to confirm destroy"
+        required: false
+        default: "no"
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  TF_IN_AUTOMATION: "true"
+  TF_INPUT: "false"
+  TF_WORKING_DIR: "ECS Fargate/terraform"
+  TF_STATE_KEY: "harness-ecs/terraform.tfstate"
+  AWS_REGION_VALUE: "us-east-1"
+  APP_NAME: "online-shopping"
+
+jobs:
+  terraform:
+    name: ECS Fargate Infrastructure
+    runs-on: ubuntu-latest
+    environment: production
+    defaults:
+      run:
+        shell: bash
+        working-directory: ${{ env.TF_WORKING_DIR }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION_VALUE }}
+
+      - name: Validate destroy confirmation
+        if: github.event.inputs.action == 'destroy'
+        run: |
+          if [ "${{ github.event.inputs.confirm_destroy }}" != "yes" ]; then
+            echo "Destroy requires confirm_destroy = yes"
+            exit 1
+          fi
+
+      - name: Terraform Init
+        run: |
+          terraform init \
+            -backend-config="bucket=${{ vars.S3_BUCKET_NAME }}" \
+            -backend-config="key=${{ env.TF_STATE_KEY }}" \
+            -backend-config="region=${{ env.AWS_REGION_VALUE }}" \
+            -backend-config="encrypt=true"
+
+      - name: Terraform Plan
+        if: github.event.inputs.action == 'plan'
+        run: terraform plan -no-color
+
+      - name: Terraform Apply
+        if: github.event.inputs.action == 'apply'
+        run: terraform apply -auto-approve -no-color
+
+      - name: Apply Summary
+        if: github.event.inputs.action == 'apply'
+        run: |
+          CLUSTER=$(terraform output -raw ecs_cluster_name)
+          ALB_URL=$(terraform output -raw app_url)
+          BLUE_TG=$(terraform output -raw blue_target_group_arn)
+          GREEN_TG=$(terraform output -raw green_target_group_arn)
+          PROD_LISTENER=$(terraform output -raw prod_listener_arn)
+          STAGE_LISTENER=$(terraform output -raw stage_listener_arn)
+
+          {
+            echo "## 🎉 ECS Fargate Infrastructure Ready"
+            echo ""
+            echo "| Resource | Value |"
+            echo "|---|---|"
+            echo "| ECS Cluster | ${CLUSTER} |"
+            echo "| ALB URL | ${ALB_URL} |"
+            echo "| Blue Target Group | ${BLUE_TG} |"
+            echo "| Green Target Group | ${GREEN_TG} |"
+            echo "| Prod Listener (80) | ${PROD_LISTENER} |"
+            echo "| Stage Listener (8080) | ${STAGE_LISTENER} |"
+            echo ""
+            echo "### Next Steps"
+            echo "1. Create Harness Service (ECS type)"
+            echo "2. Import pipeline from Git"
+            echo "3. Run pipeline → Blue-Green deploy"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Pre-Destroy ECS Cleanup
+        if: github.event.inputs.action == 'destroy'
+        run: |
+          CLUSTER="${{ env.APP_NAME }}-cluster"
+          REGION="${{ env.AWS_REGION_VALUE }}"
+
+          # Delete all ECS services in the cluster
+          SERVICES=$(aws ecs list-services --cluster "$CLUSTER" --region "$REGION" --query 'serviceArns[]' --output text 2>/dev/null || echo "")
+          if [ -n "$SERVICES" ] && [ "$SERVICES" != "None" ]; then
+            echo "$SERVICES" | tr '\t' '\n' | while read -r svc; do
+              [ -z "$svc" ] && continue
+              echo "Scaling to 0: $svc"
+              aws ecs update-service --cluster "$CLUSTER" --service "$svc" --desired-count 0 --region "$REGION" || true
+            done
+            sleep 10
+            echo "$SERVICES" | tr '\t' '\n' | while read -r svc; do
+              [ -z "$svc" ] && continue
+              echo "Deleting: $svc"
+              aws ecs delete-service --cluster "$CLUSTER" --service "$svc" --force --region "$REGION" || true
+            done
+            sleep 15
+          fi
+
+          # Deregister task definitions
+          TASK_DEFS=$(aws ecs list-task-definitions --family-prefix "${{ env.APP_NAME }}" --region "$REGION" --query 'taskDefinitionArns[]' --output text 2>/dev/null || echo "")
+          if [ -n "$TASK_DEFS" ] && [ "$TASK_DEFS" != "None" ]; then
+            echo "$TASK_DEFS" | tr '\t' '\n' | while read -r td; do
+              [ -z "$td" ] && continue
+              aws ecs deregister-task-definition --task-definition "$td" --region "$REGION" || true
+            done
+          fi
+
+          # Delete ECR repository
+          aws ecr delete-repository --repository-name "${{ env.APP_NAME }}" --force --region "$REGION" || true
+          echo "ECS cleanup done"
+
+      - name: Terraform Destroy
+        if: github.event.inputs.action == 'destroy'
+        id: terraform_destroy
+        continue-on-error: true
+        run: terraform destroy -auto-approve -no-color
+
+      - name: Cleanup ENIs on Failure
+        if: github.event.inputs.action == 'destroy' && steps.terraform_destroy.outcome == 'failure'
+        run: |
+          VPC_ID="$(terraform output -raw vpc_id 2>/dev/null || true)"
+          if [ -z "${VPC_ID}" ]; then exit 0; fi
+          ENIS=$(aws ec2 describe-network-interfaces --region "${{ env.AWS_REGION_VALUE }}" \
+            --filters "Name=vpc-id,Values=${VPC_ID}" "Name=status,Values=available" \
+            --query 'NetworkInterfaces[].NetworkInterfaceId' --output text 2>/dev/null || echo "")
+          if [ -n "$ENIS" ] && [ "$ENIS" != "None" ]; then
+            echo "$ENIS" | tr '\t' '\n' | while read -r eni; do
+              [ -z "$eni" ] && continue
+              aws ec2 delete-network-interface --region "${{ env.AWS_REGION_VALUE }}" --network-interface-id "$eni" || true
+            done
+          fi
+
+      - name: Cleanup Security Groups on Failure
+        if: github.event.inputs.action == 'destroy' && steps.terraform_destroy.outcome == 'failure'
+        run: |
+          VPC_ID="$(terraform output -raw vpc_id 2>/dev/null || true)"
+          if [ -z "${VPC_ID}" ]; then exit 0; fi
+          aws ec2 describe-security-groups --region "${{ env.AWS_REGION_VALUE }}" \
+            --filters "Name=vpc-id,Values=${VPC_ID}" \
+            --query "SecurityGroups[?GroupName!='default'].GroupId" --output text 2>/dev/null | \
+            tr '\t' '\n' | while read -r sg; do
+              [ -z "$sg" ] && continue
+              aws ec2 delete-security-group --region "${{ env.AWS_REGION_VALUE }}" --group-id "$sg" || true
+            done
+
+      - name: Terraform Destroy Retry
+        if: github.event.inputs.action == 'destroy' && steps.terraform_destroy.outcome == 'failure'
+        run: terraform destroy -auto-approve -no-color
+
+      - name: Post-Destroy Verification
+        if: github.event.inputs.action == 'destroy'
+        run: |
+          REGION="${{ env.AWS_REGION_VALUE }}"
+          echo "=== Final Verification ==="
+          echo "ECS Clusters:"
+          aws ecs list-clusters --region "$REGION" --output text 2>/dev/null || echo "  None"
+          echo "Load Balancers:"
+          aws elbv2 describe-load-balancers --region "$REGION" --query 'LoadBalancers[].LoadBalancerName' --output text 2>/dev/null || echo "  None"
+          echo "=== Done ==="
+
+      - name: Destroy Summary
+        if: github.event.inputs.action == 'destroy'
+        run: |
+          {
+            echo "## 🗑️ ECS Fargate Infrastructure Destroyed"
+            echo ""
+            echo "All resources deleted. Bill = \$0"
+          } >> "$GITHUB_STEP_SUMMARY"
