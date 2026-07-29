@@ -92,7 +92,7 @@ Wait 2 min → Harness UI → **Connected** ✅
    - Git Fetch Type: Latest from Branch
    - Branch: `master`
    - Chart Path: `Episode-07/gocart-helm/helm/gocart`
-   - Values YAML: `values.yaml`
+   - Values YAML: **leave empty** (Helm automatically uses `values.yaml` inside the chart folder)
    - Submit
 6. **Artifacts** → **+ Add Artifact Source**:
    - Artifact Repository Type: **ECR**
