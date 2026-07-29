@@ -148,6 +148,11 @@ pipeline:
                   timeout: 10m
                   spec:
                     skipDryRun: false
+                    commandFlags:
+                      - commandType: Install
+                        flag: "--create-namespace"
+                      - commandType: Upgrade
+                        flag: "--create-namespace"
 
               - step:
                   type: ShellScript
