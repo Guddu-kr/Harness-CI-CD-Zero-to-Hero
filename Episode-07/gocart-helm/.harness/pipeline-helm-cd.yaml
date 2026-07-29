@@ -141,6 +141,23 @@ pipeline:
               - identifier: k8sdelegate
           execution:
             steps:
+              # Helm requires namespace to exist BEFORE install (--namespace gocart)
+              # namespace.yaml in chart also creates it, but Helm checks FIRST
+              # This step ensures namespace exists before helm install runs
+              - step:
+                  type: ShellScript
+                  name: Create Namespace
+                  identifier: create_namespace
+                  spec:
+                    shell: Bash
+                    source:
+                      type: Inline
+                      spec:
+                        script: |-
+                          kubectl create namespace gocart --dry-run=client -o yaml | kubectl apply -f -
+                    onDelegate: true
+                  timeout: 2m
+
               - step:
                   name: Helm Deploy
                   identifier: helm_deploy
