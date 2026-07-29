@@ -40,13 +40,17 @@ Create ECS Infra (GitHub Actions) → Create Service in Harness → Import Pipel
      - Type: ECS Task Definition
      - Store: GitHub → Connector: `account.Github`
      - Repo: `Harness-CI-CD-Zero-to-Hero`
+     - Manifest Identifier: `task_definition`
+     - Git Fetch Type: Latest from Branch
      - Branch: `master`
      - File Path: `Episode-07/Online Shopping app/ecs/task-definition.json`
      - Submit
-   - **Service Definition:**
+   - **Service Definition:** (click + Add Manifest again)
      - Type: ECS Service Definition
      - Store: GitHub → Connector: `account.Github`
      - Repo: `Harness-CI-CD-Zero-to-Hero`
+     - Manifest Identifier: `service_definition`
+     - Git Fetch Type: Latest from Branch
      - Branch: `master`
      - File Path: `Episode-07/Online Shopping app/ecs/service-definition.json`
      - Submit
