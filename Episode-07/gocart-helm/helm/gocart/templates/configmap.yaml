@@ -1,7 +1,7 @@
 # ============================================
 # CONFIGMAP — Non-secret configuration
 #
-# {{- range $key, $value := .Values.env }}
+# - range $key, $value := .Values.env 
 #   This LOOPS over all key-value pairs in values.yaml → env section:
 #   env:
 #     NODE_ENV: "production"      → generates: NODE_ENV: "production"
@@ -9,7 +9,7 @@
 #     PORT: "3000"                → generates: PORT: "3000"
 #
 # | quote → wraps value in quotes
-# {{- end }} → ends the loop
+# - end  → ends the loop
 # ============================================
 apiVersion: v1
 kind: ConfigMap

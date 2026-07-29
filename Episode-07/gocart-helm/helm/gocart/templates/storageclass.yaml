@@ -1,5 +1,5 @@
 # ============================================
-# {{ .Values.postgres.storageClass }} → reads from values.yaml → "auto-ebs-sc"
+#  .Values.postgres.storageClass  → reads from values.yaml → "auto-ebs-sc"
 #
 # EKS Auto Mode requires this — it does NOT create a StorageClass automatically
 # ============================================

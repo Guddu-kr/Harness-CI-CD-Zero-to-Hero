@@ -1,10 +1,10 @@
 # ============================================
 # POSTGRESQL — Database for GoCart
 #
-# {{ .Values.postgres.image }}        → "postgres:16-alpine"
-# {{ .Values.postgres.storage }}      → "1Gi"
-# {{ .Values.postgres.storageClass }} → "auto-ebs-sc"
-# {{ .Values.postgres.user }}         → "gocart"
+#  .Values.postgres.image         → "postgres:16-alpine"
+#  .Values.postgres.storage       → "1Gi"
+#  .Values.postgres.storageClass  → "auto-ebs-sc"
+#  .Values.postgres.user          → "gocart"
 # | quote                             → wraps in quotes
 #
 # ============================================

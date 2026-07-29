@@ -2,12 +2,12 @@
 # DEPLOYMENT — Manages GoCart pods (creates, updates, scales)
 #
 # KEY VALUES FROM values.yaml:
-#   {{ .Values.replicaCount }}           → 2 (number of pods)
+#    .Values.replicaCount            → 2 (number of pods)
 #   .Values.image       → ECR URL (filled by Harness at deploy time)
 #   .Values.image              → v5 (filled by Harness at deploy time)
 #   .Values.pullPolicy       → IfNotPresent
-#   {{ .Values.service.targetPort }}     → 3000
-#   {{- toYaml .Values.resources | nindent 12 }} → copies entire resources block from values.yaml
+#    .Values.service.targetPort      → 3000
+#   - toYaml .Values.resources | nindent 12  → copies entire resources block from values.yaml
 #
 # STRATEGY: RollingUpdate with maxUnavailable: 0 = zero downtime
 # ============================================
