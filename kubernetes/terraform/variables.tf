@@ -25,7 +25,7 @@ variable "vpc_cidr" {
 variable "bastion_instance_type" {
   description = "Bastion EC2 instance type"
   type        = string
-  default     = "t3.medium"
+  default     = "t2.medium"
 }
 
 variable "bastion_key_name" {
