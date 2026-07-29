@@ -75,8 +75,8 @@ Create ECS Infra (GitHub Actions) → Create Service in Harness → Import Pipel
 4. Deployment Type: **Amazon ECS**
 5. Setup: **Inline**
 6. Connector: `account.aws_account` (AWS OIDC connector)
-7. Region: `us-east-1`
-8. Cluster: `online-shopping-cluster`
+7. Region: `US East (N. Virginia)`
+8. Cluster: type manually → `online-shopping-cluster` (dropdown may not work without delegate — just type it)
 9. Save
 
 ---

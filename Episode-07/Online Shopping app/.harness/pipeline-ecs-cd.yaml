@@ -148,7 +148,23 @@ pipeline:
                   identifier: ecs_blue_green_create
                   type: EcsBlueGreenCreateService
                   timeout: 10m
-                  spec: {}
+                  # These values come from "ECS Fargate Terraform" GitHub Actions output
+                  # OR check in AWS Console → EC2 → Load Balancers / Target Groups
+                  spec:
+                    # Select your ALB from dropdown (name: online-shopping-alb)
+                    loadBalancer: <+input>
+                    # Prod Listener = port 80 (users access app here)
+                    prodListener: <+input>
+                    # Leave empty if no listener rules
+                    prodListenerRuleArn: <+input>
+                    # Stage Listener = port 8080 (test new version before swap)
+                    stageListener: <+input>
+                    # Leave empty if no listener rules
+                    stageListenerRuleArn: <+input>
+                    # Blue Target Group = current live version (online-shopping-blue-tg)
+                    prodTargetGroupArn: <+input>
+                    # Green Target Group = new version for testing (online-shopping-green-tg)
+                    stageTargetGroupArn: <+input>
 
               - step:
                   name: ECS Blue Green Swap Target Groups
