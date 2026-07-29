@@ -1,0 +1,167 @@
+# ============================================
+# PIPELINE: Episode 7, Topic 2 — Deploy Online Shopping to ECS (Blue-Green)
+# ============================================
+# Stage 1: Build & Push to ECR (CI stage, Harness Cloud)
+# Stage 2: Deploy to ECS Blue-Green (CD Deployment stage)
+#
+# ============================================
+# CHANGE THESE VALUES:
+# ============================================
+#   projectIdentifier: HarnessCICDZerotoHero
+#   orgIdentifier: default
+#   connectorRef: account.Github
+#   repoName: Harness-CI-CD-Zero-to-Hero
+#   connectorRef: account.aws_account
+#   serviceRef: onlineshopping
+#   environmentRef: development
+#   infrastructureDefinitions: ecsfargate
+# ============================================
+pipeline:
+  name: episode7-online-shopping-ecs-cd
+  identifier: episode7_online_shopping_ecs_cd
+  # CHANGE THIS: Your project ID
+  projectIdentifier: HarnessCICDZerotoHero
+  # CHANGE THIS: Your org name
+  orgIdentifier: default
+  tags: {}
+  properties:
+    ci:
+      codebase:
+        # CHANGE THIS: Your GitHub connector
+        connectorRef: account.Github
+        # CHANGE THIS: Your repo name
+        repoName: Harness-CI-CD-Zero-to-Hero
+        build: <+input>
+  stages:
+    # ============================================
+    # STAGE 1: Build & Push to ECR (CI stage)
+    # ============================================
+    - stage:
+        name: build-and-push
+        identifier: build_and_push
+        description: "Build Online Shopping Docker image and push to ECR"
+        type: CI
+        spec:
+          cloneCodebase: true
+          platform:
+            os: Linux
+            arch: Amd64
+          runtime:
+            type: Cloud
+            spec: {}
+          execution:
+            steps:
+              - step:
+                  type: Run
+                  name: Compile Check
+                  identifier: compile_check
+                  spec:
+                    shell: Sh
+                    image: maven:3.9-eclipse-temurin-17
+                    command: |-
+                      cd "Episode-07/Online Shopping app"
+                      mvn compile -q
+
+              - step:
+                  type: Run
+                  name: Unit Tests
+                  identifier: unit_tests
+                  spec:
+                    shell: Sh
+                    image: maven:3.9-eclipse-temurin-17
+                    command: |-
+                      cd "Episode-07/Online Shopping app"
+                      mvn test
+
+              - step:
+                  type: Run
+                  name: Create ECR Repo
+                  identifier: create_ecr
+                  spec:
+                    shell: Sh
+                    image: amazon/aws-cli:latest
+                    envVariables:
+                      AWS_ACCESS_KEY_ID: <+secrets.getValue("aws_access_key_id")>
+                      AWS_SECRET_ACCESS_KEY: <+secrets.getValue("aws_secret_access_key")>
+                      AWS_DEFAULT_REGION: <+variable.aws_region>
+                    command: |-
+                      aws ecr create-repository --repository-name online-shopping --region <+variable.aws_region> 2>/dev/null || echo "Repository already exists"
+
+              - step:
+                  type: BuildAndPushECR
+                  name: Build and Push to ECR
+                  identifier: build_push_ecr
+                  spec:
+                    # CHANGE THIS: Your AWS OIDC connector
+                    connectorRef: account.aws_account
+                    region: <+variable.aws_region>
+                    account: <+variable.aws_account_id>
+                    imageName: online-shopping
+                    tags:
+                      - v<+pipeline.sequenceId>
+                      - latest
+                    dockerfile: "Episode-07/Online Shopping app/Dockerfile"
+                    context: "Episode-07/Online Shopping app"
+
+    # ============================================
+    # STAGE 2: Deploy to ECS Blue-Green (CD stage)
+    # ============================================
+    - stage:
+        name: deploy-ecs-blue-green
+        identifier: deploy_ecs_blue_green
+        description: "Blue-Green deployment to ECS Fargate"
+        type: Deployment
+        failureStrategies:
+          - onFailure:
+              errors:
+                - AllErrors
+              action:
+                type: StageRollback
+        spec:
+          deploymentType: ECS
+          service:
+            # CHANGE THIS: Your service ID (create in CD → Services → ECS type)
+            serviceRef: onlineshopping
+            serviceInputs:
+              serviceDefinition:
+                type: ECS
+                spec:
+                  artifacts:
+                    primary:
+                      primaryArtifactRef: ecr_image
+                      sources:
+                        - identifier: ecr_image
+                          type: Ecr
+                          spec:
+                            tag: v<+pipeline.sequenceId>
+          environment:
+            # CHANGE THIS: Your environment ID
+            environmentRef: development
+            deployToAll: false
+            infrastructureDefinitions:
+              # CHANGE THIS: Your infrastructure ID
+              - identifier: ecsfargate
+          execution:
+            steps:
+              - step:
+                  name: ECS Blue Green Create Service
+                  identifier: ecs_blue_green_create
+                  type: EcsBlueGreenCreateService
+                  timeout: 10m
+                  spec: {}
+
+              - step:
+                  name: ECS Blue Green Swap Target Groups
+                  identifier: ecs_blue_green_swap
+                  type: EcsBlueGreenSwapTargetGroups
+                  timeout: 10m
+                  spec:
+                    doNotDownsizeOldService: false
+
+            rollbackSteps:
+              - step:
+                  name: ECS Blue Green Rollback
+                  identifier: ecs_blue_green_rollback
+                  type: EcsBlueGreenRollback
+                  timeout: 10m
+                  spec: {}

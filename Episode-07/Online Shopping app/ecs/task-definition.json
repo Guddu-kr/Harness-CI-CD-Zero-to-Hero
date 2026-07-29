@@ -1,0 +1,109 @@
+{
+    "family": "online-shopping",
+    "networkMode": "awsvpc",
+    "requiresCompatibilities": [
+        "FARGATE"
+    ],
+    "cpu": "1024",
+    "memory": "2048",
+    "executionRoleArn": "<+infra.variables.task_execution_role_arn>",
+    "taskRoleArn": "<+infra.variables.task_role_arn>",
+    "containerDefinitions": [
+        {
+            "name": "online-shopping",
+            "image": "<+artifact.image>",
+            "essential": true,
+            "portMappings": [
+                {
+                    "containerPort": 8080,
+                    "protocol": "tcp"
+                }
+            ],
+            "environment": [
+                {
+                    "name": "DB_HOST",
+                    "value": "localhost"
+                },
+                {
+                    "name": "DB_PORT",
+                    "value": "3306"
+                },
+                {
+                    "name": "DB_NAME",
+                    "value": "eazydeals"
+                },
+                {
+                    "name": "DB_USER",
+                    "value": "root"
+                },
+                {
+                    "name": "DB_PASSWORD",
+                    "value": "root"
+                }
+            ],
+            "logConfiguration": {
+                "logDriver": "awslogs",
+                "options": {
+                    "awslogs-group": "/ecs/online-shopping",
+                    "awslogs-region": "<+infra.variables.region>",
+                    "awslogs-stream-prefix": "app"
+                }
+            },
+            "healthCheck": {
+                "command": [
+                    "CMD-SHELL",
+                    "curl -f http://localhost:8080/ || exit 1"
+                ],
+                "interval": 30,
+                "timeout": 5,
+                "retries": 3,
+                "startPeriod": 60
+            },
+            "dependsOn": [
+                {
+                    "containerName": "mysql",
+                    "condition": "HEALTHY"
+                }
+            ]
+        },
+        {
+            "name": "mysql",
+            "image": "mysql:8.0",
+            "essential": true,
+            "portMappings": [
+                {
+                    "containerPort": 3306,
+                    "protocol": "tcp"
+                }
+            ],
+            "environment": [
+                {
+                    "name": "MYSQL_ROOT_PASSWORD",
+                    "value": "root"
+                },
+                {
+                    "name": "MYSQL_DATABASE",
+                    "value": "eazydeals"
+                }
+            ],
+            "logConfiguration": {
+                "logDriver": "awslogs",
+                "options": {
+                    "awslogs-group": "/ecs/online-shopping",
+                    "awslogs-region": "<+infra.variables.region>",
+                    "awslogs-stream-prefix": "mysql"
+                }
+            },
+            "healthCheck": {
+                "command": [
+                    "CMD-SHELL",
+                    "mysqladmin ping -h localhost -u root -proot || exit 1"
+                ],
+                "interval": 15,
+                "timeout": 5,
+                "retries": 5,
+                "startPeriod": 30
+            }
+        }
+    ]
+}
