@@ -25,7 +25,23 @@ Create ECS Infra (GitHub Actions) → Create Service in Harness → Import Pipel
 
 1. GitHub → Actions → **"ECS Fargate Terraform"** → Run workflow → `action: apply`
 2. Wait ~2 minutes
-3. Output: ECS Cluster + ALB URL
+3. Output: ECS Cluster + ALB URL + ARNs
+
+---
+
+## Step 1.1: Create Project Variables (One-Time — from Terraform Output)
+
+Go to **Project Settings → Variables** and create these (values from "ECS Fargate Terraform" GitHub Actions output):
+
+| Variable Name | Value |
+|---|---|
+| `ecs_alb_name` | `online-shopping-alb` |
+| `ecs_prod_listener_arn` | Your Prod Listener ARN (port 80) |
+| `ecs_stage_listener_arn` | Your Stage Listener ARN (port 8080) |
+| `ecs_blue_target_group_arn` | Your Blue Target Group ARN |
+| `ecs_green_target_group_arn` | Your Green Target Group ARN |
+
+> Get these values from GitHub Actions → "ECS Fargate Terraform" → last successful Apply run → Summary tab
 
 ---
 

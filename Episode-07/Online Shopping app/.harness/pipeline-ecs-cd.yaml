@@ -148,23 +148,22 @@ pipeline:
                   identifier: ecs_blue_green_create
                   type: EcsBlueGreenCreateService
                   timeout: 10m
-                  # These values come from "ECS Fargate Terraform" GitHub Actions output
-                  # OR check in AWS Console → EC2 → Load Balancers / Target Groups
                   spec:
-                    # Select your ALB from dropdown (name: online-shopping-alb)
-                    loadBalancer: <+input>
-                    # Prod Listener = port 80 (users access app here)
-                    prodListener: <+input>
-                    # Leave empty if no listener rules
-                    prodListenerRuleArn: <+input>
-                    # Stage Listener = port 8080 (test new version before swap)
-                    stageListener: <+input>
-                    # Leave empty if no listener rules
-                    stageListenerRuleArn: <+input>
-                    # Blue Target Group = current live version (online-shopping-blue-tg)
-                    prodTargetGroupArn: <+input>
-                    # Green Target Group = new version for testing (online-shopping-green-tg)
-                    stageTargetGroupArn: <+input>
+                    # loadBalancer: Name of ALB that routes traffic to your ECS tasks
+                    loadBalancer: <+variable.ecs_alb_name>
+                    # prodListener: port 80 — where REAL USERS access the app (live traffic)
+                    prodListener: <+variable.ecs_prod_listener_arn>
+                    # prodListenerRuleArn: Specific routing rule (empty = use default rule)
+                    prodListenerRuleArn: ""
+                    # stageListener: port 8080 — where you TEST new version before swap (only you see it)
+                    stageListener: <+variable.ecs_stage_listener_arn>
+                    # stageListenerRuleArn: Specific routing rule (empty = use default rule)
+                    stageListenerRuleArn: ""
+                    # prodTargetGroupArn: Blue TG — current version running here (live users)
+                    prodTargetGroupArn: <+variable.ecs_blue_target_group_arn>
+                    # stageTargetGroupArn: Green TG — new version deployed here (testing)
+                    # After swap: prod listener → Green TG, stage listener → Blue TG
+                    stageTargetGroupArn: <+variable.ecs_green_target_group_arn>
 
               - step:
                   name: ECS Blue Green Swap Target Groups
