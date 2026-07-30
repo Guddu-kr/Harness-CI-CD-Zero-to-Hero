@@ -20,17 +20,17 @@ resource "aws_ecs_task_definition" "delegate" {
   container_definitions = jsonencode([
     {
       name      = "harness-delegate"
-      image     = "harness/delegate:latest"
+      image     = "us-docker.pkg.dev/gar-prod-setup/harness-public/harness/delegate:latest"
       essential = true
       environment = [
         { name = "ACCOUNT_ID", value = var.delegate_account_id },
         { name = "DELEGATE_TOKEN", value = var.delegate_token },
-        { name = "MANAGER_HOST_AND_PORT", value = "https://app.harness.io/gratis" },
+        { name = "MANAGER_HOST_AND_PORT", value = "https://app.harness.io" },
         { name = "DELEGATE_NAME", value = "${var.app_name}-ecs-delegate" },
         { name = "NEXT_GEN", value = "true" },
         { name = "DELEGATE_TYPE", value = "DOCKER" },
         { name = "DELEGATE_TAGS", value = "ecs-fargate" },
-        { name = "LOG_STREAMING_SERVICE_URL", value = "https://app.harness.io/gratis/log-service/" }
+        { name = "LOG_STREAMING_SERVICE_URL", value = "https://app.harness.io/log-service/" }
       ]
       logConfiguration = {
         logDriver = "awslogs"
