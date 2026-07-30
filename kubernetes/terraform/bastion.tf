@@ -54,42 +54,18 @@ resource "aws_security_group" "bastion" {
   }
 }
 
-# Get latest Amazon Linux 2023 AMI (standard, NOT ECS optimized)
-data "aws_ami" "amazon_linux" {
-  most_recent = true
-  owners      = ["amazon"]
+# AMI is hardcoded: ami-02b64aa047cb5edf5 (Amazon Linux 2023, us-east-1)
 
-  filter {
-    name   = "name"
-    values = ["al2023-ami-2023*-x86_64"]
-  }
-
-  filter {
-    name   = "virtualization-type"
-    values = ["hvm"]
-  }
-
-  filter {
-    name   = "architecture"
-    values = ["x86_64"]
-  }
-}
-
-# Bastion EC2 Instance (Amazon Linux 2023, SSM access, no key pair)
+# Bastion EC2 Instance (fixed AMI, SSM access, no key pair)
 resource "aws_instance" "bastion" {
-  ami                    = data.aws_ami.amazon_linux.id
+  ami                    = "ami-02b64aa047cb5edf5"
   instance_type          = var.bastion_instance_type
   subnet_id              = aws_subnet.public_1.id
   vpc_security_group_ids = [aws_security_group.bastion.id]
   iam_instance_profile   = aws_iam_instance_profile.bastion.name
 
   # Don't recreate EC2 when user_data changes (keeps data safe)
-  # But DO update user_data so next fresh create gets latest tools
   user_data_replace_on_change = false
-
-  lifecycle {
-    ignore_changes = [ami]
-  }
 
   # Runs tools.sh on first boot only
   user_data = file("${path.module}/tools.sh")
