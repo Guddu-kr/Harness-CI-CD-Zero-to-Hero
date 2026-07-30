@@ -12,12 +12,12 @@ Create ECS Infra (GitHub Actions) → Create Service in Harness → Import Pipel
 
 | What | Episode | Link |
 |------|---------|------|
-| GitHub connector (`account.Github`) | 1 | [Episode 1](../Episode-01/hello-world-app/DEPLOY-STEPS.md) |
-| AWS OIDC connector (`account.aws_account`) | 3 | [Episode 3](../Episode-03/README.md#connector-3-aws--🆕-create-now) |
-| Secret: `aws_access_key_id` | 3 | [Episode 3](../Episode-03/terraform-project/README.md#step-2-get-aws-access-key--secret-key) |
-| Secret: `aws_secret_access_key` | 3 | [Episode 3](../Episode-03/terraform-project/README.md#step-3-add-secrets-in-harness) |
-| Variable: `aws_account_id` | 4 | [Episode 4](../Episode-04/README.md#step-1-add-variable-aws_account_id-in-harness) |
-| Variable: `aws_region` | 3 | [Episode 3](../Episode-03/terraform-project/README.md#step-4-add-variables-in-harness) |
+| GitHub connector (`account.Github`) | 1 | [Episode 1](../../Episode-01/hello-world-app/DEPLOY-STEPS.md) |
+| AWS OIDC connector (`account.aws_account`) | 3 | [Episode 3](../../Episode-03/README.md) |
+| Secret: `aws_access_key_id` | 3 | [Episode 3](../../Episode-03/terraform-project/README.md) |
+| Secret: `aws_secret_access_key` | 3 | [Episode 3](../../Episode-03/terraform-project/README.md) |
+| Variable: `aws_account_id` | 4 | [Episode 4](../../Episode-04/README.md) |
+| Variable: `aws_region` | 3 | [Episode 3](../../Episode-03/terraform-project/README.md) |
 
 ---
 
@@ -169,6 +169,25 @@ GitHub → Actions → "ECS Fargate Terraform" → destroy → confirm: yes
 ```
 
 Deletes: ECS services + cluster + ALB + VPC → $0
+
+---
+
+## Test Rollback
+
+1. Run pipeline → success ✅ (app deployed)
+2. Break `ecs/task-definition.json` — change health check path:
+   ```json
+   "command": ["CMD-SHELL", "curl -f http://localhost:8080/nonexistent || exit 1"]
+   ```
+3. Push → Run pipeline
+4. Stage 1: Build passes ✅
+5. Stage 2: ECS Blue Green Create Service → new tasks start → health check FAILS → **EcsBlueGreenRollback triggers** → ALB swaps back to old version instantly ✅
+
+**Why this works:**
+- New version deploys to Green target group
+- Health check fails → Harness detects failure
+- Rollback = swap ALB listener back to Blue (old version still running)
+- Users never see downtime — instant switch
 
 ---
 
