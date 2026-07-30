@@ -163,7 +163,6 @@ pipeline:
                     prodTargetGroupArn: <+variable.ecs_blue_target_group_arn>
                     # stageTargetGroupArn: Green TG — new version deployed here (testing)
                     # After swap: prod listener → Green TG, stage listener → Blue TG
-                    stageTargetGroupArn: <+variable.ecs_green_target_group_arn>
 
               - step:
                   name: ECS Blue Green Swap Target Groups

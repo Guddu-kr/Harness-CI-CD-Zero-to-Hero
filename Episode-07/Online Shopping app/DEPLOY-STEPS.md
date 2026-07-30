@@ -33,10 +33,6 @@ Create ECS Infra (GitHub Actions) → Create Service in Harness → Import Pipel
 4. Output: ECS Cluster + ALB URL + ARNs
 5. Delegate auto-installs on ECS Fargate and connects to Harness (wait 2 min → Harness UI → Delegates → Connected ✅)
 
-## Step 1.1: Update AWS Connector (One-Time)
-
-1. Go to **Account Settings** → **Connectors** → `aws_account` → Edit → **Delegates Setup** → select **"Use any available Delegate"** → Save
-
 ---
 
 ## Step 1.2: Create Project Variables (One-Time — from Terraform Output)
