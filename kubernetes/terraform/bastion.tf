@@ -60,7 +60,7 @@ resource "aws_security_group" "bastion" {
 resource "aws_instance" "bastion" {
   ami                    = "ami-02b64aa047cb5edf5"
   instance_type          = var.bastion_instance_type
-  subnet_id              = aws_subnet.public_1.id
+  subnet_id              = aws_subnet.public_2.id
   vpc_security_group_ids = [aws_security_group.bastion.id]
   iam_instance_profile   = aws_iam_instance_profile.bastion.name
 
@@ -87,6 +87,10 @@ resource "aws_eks_access_entry" "bastion" {
   cluster_name  = aws_eks_cluster.main.name
   principal_arn = aws_iam_role.bastion.arn
   type          = "STANDARD"
+
+  lifecycle {
+    ignore_changes = [principal_arn]
+  }
 }
 
 resource "aws_eks_access_policy_association" "bastion_admin" {
