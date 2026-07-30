@@ -15,3 +15,20 @@ variable "container_port" {
   type        = number
   default     = 8080
 }
+
+# ═══════════════════════════════════════════════════════════════════
+# Harness Delegate Variables
+# Get from: Harness → Project Settings → Delegates → Tokens
+# ═══════════════════════════════════════════════════════════════════
+variable "delegate_account_id" {
+  description = "Harness Account ID (from Account Settings → Overview)"
+  type        = string
+  default     = ""
+}
+
+variable "delegate_token" {
+  description = "Harness Delegate Token (from Project Settings → Delegates → Tokens)"
+  type        = string
+  default     = ""
+  sensitive   = true
+}

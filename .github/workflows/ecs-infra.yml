@@ -85,7 +85,10 @@ jobs:
 
       - name: Terraform Apply
         if: github.event.inputs.action == 'apply'
-        run: terraform apply -auto-approve -no-color
+        run: |
+          terraform apply -auto-approve -no-color \
+            -var="delegate_account_id=${{ vars.HARNESS_ACCOUNT_ID }}" \
+            -var="delegate_token=${{ secrets.HARNESS_DELEGATE_TOKEN }}"
 
       - name: Apply Summary
         if: github.event.inputs.action == 'apply'

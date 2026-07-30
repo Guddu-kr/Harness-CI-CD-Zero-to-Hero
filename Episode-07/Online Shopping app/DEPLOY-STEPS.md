@@ -23,9 +23,15 @@ Create ECS Infra (GitHub Actions) → Create Service in Harness → Import Pipel
 
 ## Step 1: Create ECS Infrastructure
 
-1. GitHub → Actions → **"ECS Fargate Terraform"** → Run workflow → `action: apply`
-2. Wait ~2 minutes
-3. Output: ECS Cluster + ALB URL + ARNs
+1. **Add GitHub Secrets/Variables** (one-time):
+   - Go to GitHub repo → **Settings** → **Secrets and variables** → **Actions**
+   - Add **Variable**: `HARNESS_ACCOUNT_ID` → your Harness Account ID (from Account Settings → Overview)
+   - Add **Secret**: `HARNESS_DELEGATE_TOKEN` → your Delegate Token (from Project Settings → Delegates → Tokens → copy `default_token` or create new)
+
+2. GitHub → Actions → **"ECS Fargate Terraform"** → Run workflow → `action: apply`
+3. Wait ~2 minutes
+4. Output: ECS Cluster + ALB URL + ARNs
+5. Delegate auto-installs on ECS Fargate and connects to Harness (wait 2 min → Harness UI → Delegates → Connected ✅)
 
 ---
 
