@@ -32,3 +32,9 @@ variable "delegate_token" {
   default     = ""
   sensitive   = true
 }
+
+variable "delegate_image_tag" {
+  description = "Harness Delegate image tag (from Harness UI → Delegates → Install → Docker command)"
+  type        = string
+  default     = "26.07.89601"
+}

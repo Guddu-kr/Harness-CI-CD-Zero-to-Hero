@@ -20,7 +20,7 @@ resource "aws_ecs_task_definition" "delegate" {
   container_definitions = jsonencode([
     {
       name      = "harness-delegate"
-      image     = "us-docker.pkg.dev/gar-prod-setup/harness-public/harness/delegate:latest"
+      image     = "us-docker.pkg.dev/gar-prod-setup/harness-public/harness/delegate:${var.delegate_image_tag}"
       essential = true
       environment = [
         { name = "ACCOUNT_ID", value = var.delegate_account_id },
