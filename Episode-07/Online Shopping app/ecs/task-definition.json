@@ -6,8 +6,8 @@
     ],
     "cpu": "1024",
     "memory": "2048",
-    "executionRoleArn": "<+infra.variables.task_execution_role_arn>",
-    "taskRoleArn": "<+infra.variables.task_role_arn>",
+    "executionRoleArn": "<+variable.ecs_task_execution_role_arn>",
+    "taskRoleArn": "<+variable.ecs_task_role_arn>",
     "containerDefinitions": [
         {
             "name": "online-shopping",
@@ -45,7 +45,7 @@
                 "logDriver": "awslogs",
                 "options": {
                     "awslogs-group": "/ecs/online-shopping",
-                    "awslogs-region": "<+infra.variables.region>",
+                    "awslogs-region": "<+variable.aws_region>",
                     "awslogs-stream-prefix": "app"
                 }
             },
@@ -90,7 +90,7 @@
                 "logDriver": "awslogs",
                 "options": {
                     "awslogs-group": "/ecs/online-shopping",
-                    "awslogs-region": "<+infra.variables.region>",
+                    "awslogs-region": "<+variable.aws_region>",
                     "awslogs-stream-prefix": "mysql"
                 }
             },

@@ -137,6 +137,8 @@ jobs:
             echo "| \`ecs_subnet_1\` | ${SUBNET_1} |"
             echo "| \`ecs_subnet_2\` | ${SUBNET_2} |"
             echo "| \`ecs_security_group_id\` | ${SG_ID} |"
+            echo "| \`ecs_task_execution_role_arn\` | $(terraform output -raw task_execution_role_arn) |"
+            echo "| \`ecs_task_role_arn\` | $(terraform output -raw task_role_arn) |"
             echo ""
             echo "> 💰 Cost: ~\$0.50/day while running. Destroy when done!"
           } >> "$GITHUB_STEP_SUMMARY"

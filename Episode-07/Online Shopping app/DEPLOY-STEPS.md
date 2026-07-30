@@ -48,6 +48,8 @@ Go to **Project Settings → Variables** and create these (values from "ECS Farg
 | `ecs_subnet_1` | Your first subnet ID (from Terraform output) |
 | `ecs_subnet_2` | Your second subnet ID (from Terraform output) |
 | `ecs_security_group_id` | Your ECS security group ID (from Terraform output) |
+| `ecs_task_execution_role_arn` | Task Execution Role ARN (from Terraform output) |
+| `ecs_task_role_arn` | Task Role ARN (from Terraform output) |
 
 > Get these values from GitHub Actions → "ECS Fargate Terraform" → last successful Apply run → Summary tab
 
