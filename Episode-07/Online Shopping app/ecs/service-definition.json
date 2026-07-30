@@ -9,17 +9,13 @@
     "networkConfiguration": {
         "awsvpcConfiguration": {
             "assignPublicIp": "ENABLED",
-            "subnets": <+infra.variables.subnet_ids>,
+            "subnets": [
+                "<+variable.ecs_subnet_1>",
+                "<+variable.ecs_subnet_2>"
+            ],
             "securityGroups": [
-                "<+infra.variables.security_group_id>"
+                "<+variable.ecs_security_group_id>"
             ]
         }
-    },
-    "loadBalancers": [
-        {
-            "targetGroupArn": "<+targetGroupArn>",
-            "containerName": "online-shopping",
-            "containerPort": 8080
-        }
-    ]
+    }
 }
