@@ -98,6 +98,9 @@ jobs:
           BLUE_TG=$(terraform output -raw blue_target_group_arn)
           PROD_LISTENER=$(terraform output -raw prod_listener_arn)
           STAGE_LISTENER=$(terraform output -raw stage_listener_arn)
+          SUBNET_1=$(terraform output -json subnet_ids | jq -r '.[0]')
+          SUBNET_2=$(terraform output -json subnet_ids | jq -r '.[1]')
+          SG_ID=$(terraform output -raw ecs_security_group_id)
 
           {
             echo "## 🎉 ECS Fargate Infrastructure Ready"
@@ -109,6 +112,9 @@ jobs:
             echo "| Blue Target Group | ${BLUE_TG} |"
             echo "| Prod Listener (80) | ${PROD_LISTENER} |"
             echo "| Stage Listener (8080) | ${STAGE_LISTENER} |"
+            echo "| Subnet 1 | ${SUBNET_1} |"
+            echo "| Subnet 2 | ${SUBNET_2} |"
+            echo "| ECS Security Group | ${SG_ID} |"
             echo ""
             echo "### How to Verify in AWS Console"
             echo ""
@@ -128,6 +134,9 @@ jobs:
             echo "| \`ecs_prod_listener_arn\` | ${PROD_LISTENER} |"
             echo "| \`ecs_stage_listener_arn\` | ${STAGE_LISTENER} |"
             echo "| \`ecs_blue_target_group_arn\` | ${BLUE_TG} |"
+            echo "| \`ecs_subnet_1\` | ${SUBNET_1} |"
+            echo "| \`ecs_subnet_2\` | ${SUBNET_2} |"
+            echo "| \`ecs_security_group_id\` | ${SG_ID} |"
             echo ""
             echo "> 💰 Cost: ~\$0.50/day while running. Destroy when done!"
           } >> "$GITHUB_STEP_SUMMARY"

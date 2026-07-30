@@ -45,6 +45,9 @@ Go to **Project Settings → Variables** and create these (values from "ECS Farg
 | `ecs_prod_listener_arn` | Your Prod Listener ARN (port 80) |
 | `ecs_stage_listener_arn` | Your Stage Listener ARN (port 8080) |
 | `ecs_blue_target_group_arn` | Your Blue Target Group ARN |
+|  | First subnet ID (from Terraform output) |
+|  | Second subnet ID (from Terraform output) |
+|  | ECS security group ID (from Terraform output) |
 
 > Get these values from GitHub Actions → "ECS Fargate Terraform" → last successful Apply run → Summary tab
 
