@@ -162,7 +162,8 @@ pipeline:
                     # prodTargetGroupArn: Blue TG — current version running here (live users)
                     prodTargetGroupArn: <+variable.ecs_blue_target_group_arn>
                     # stageTargetGroupArn: Green TG — new version deployed here (testing)
-                    # After swap: prod listener → Green TG, stage listener → Blue TG
+                    # Without Traffic Shifting (standard Blue-Green) — you provide ONLY prodTargetGroupArn.
+                    # Harness automatically uses the OTHER target group as stage. It swaps 100% instantly.
 
               - step:
                   name: ECS Blue Green Swap Target Groups
