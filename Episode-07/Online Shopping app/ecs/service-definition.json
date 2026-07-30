@@ -17,5 +17,12 @@
                 "<+variable.ecs_security_group_id>"
             ]
         }
-    }
+    },
+    "loadBalancers": [
+        {
+            "targetGroupArn": "<+targetGroupArn>",
+            "containerName": "online-shopping",
+            "containerPort": 8080
+        }
+    ]
 }
