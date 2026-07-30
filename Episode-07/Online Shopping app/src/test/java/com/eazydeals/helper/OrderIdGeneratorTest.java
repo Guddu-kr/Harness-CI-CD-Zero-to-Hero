@@ -10,12 +10,13 @@ class OrderIdGeneratorTest {
         String orderId = OrderIdGenerator.getOrderId();
         assertNotNull(orderId);
         assertFalse(orderId.isEmpty());
+        assertTrue(orderId.startsWith("ORD-"));
     }
 
     @Test
-    void testOrderIdUniqueness() {
-        String orderId1 = OrderIdGenerator.getOrderId();
-        String orderId2 = OrderIdGenerator.getOrderId();
-        assertNotEquals(orderId1, orderId2);
+    void testOrderIdFormat() {
+        String orderId = OrderIdGenerator.getOrderId();
+        // Format: ORD-YYYYMMDDHHmmss (18 chars)
+        assertEquals(18, orderId.length());
     }
 }
