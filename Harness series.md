@@ -219,7 +219,6 @@ Topics:
 * Encrypted Variables
 * Approval Gates
 * Manual Approval
-* Jira Approval
 * Email Approval
 * OPA
 * Governance
@@ -302,7 +301,6 @@ By the end of these 10 episodes, your audience will have built an enterprise-gra
 * Kubernetes
 * Helm
 * Amazon EKS
-* Amazon ECS
 * Docker
 * Amazon ECR
 * GitHub Integration
@@ -317,8 +315,8 @@ By the end of these 10 episodes, your audience will have built an enterprise-gra
 * Canary & Blue-Green Deployments
 * Prometheus
 * Grafana
-* Datadog
-* New Relic
+* EFK
+* opentelemetry
 * Production Rollbacks
 * Enterprise CI/CD Best Practices
 
