@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+  namespace: mobile-ecommerce
+spec:
+  type: ClusterIP
+  selector:
+    app: backend
+  ports:
+    - port: 4000
+      targetPort: 4000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  namespace: mobile-ecommerce
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing
+spec:
+  type: LoadBalancer
+  selector:
+    app: frontend
+  ports:
+    - port: 80
+      targetPort: 80
