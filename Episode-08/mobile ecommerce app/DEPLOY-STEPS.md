@@ -3,7 +3,7 @@
 ## Flow
 
 ```
-Store Secrets → Create OPA Policy → Add Approval Gate → Deploy with Governance
+Build & Test → OPA Policy Check → Manual Approval → Deploy with Secrets
 ```
 
 ---
@@ -54,9 +54,33 @@ Store Secrets → Create OPA Policy → Add Approval Gate → Deploy with Govern
 
 ---
 
-## Step 2: Store Secrets in Harness (Secret Manager)
+## Step 2: Store Secrets in AWS Secrets Manager
 
-Go to **Project Settings → Secrets → + New Secret → Text**:
+### Step 2.1: Add AWS Secrets Manager Connector in Harness
+
+1. Go to **Account Settings** → **Connectors** → **+ New Connector**
+2. Choose: **Secret Managers** → **AWS Secrets Manager**
+3. **Screen 1 (Overview):**
+   - Name: `aws-secrets-manager`
+4. **Screen 2 (Credentials):**
+   - Credential Type: **AWS Access Key**
+   - Access Key: select secret `aws_access_key_id`
+   - Secret Key: select secret `aws_secret_access_key`
+   - (Or use **Assume Role using Delegate** if delegate has IAM access)
+5. **Screen 3 (AWS SM Configuration):**
+   - Region: `us-east-1`
+   - Secret Name Prefix: `harness/`
+6. **Screen 4 (Delegates Setup):**
+   - Select: **Use any available Delegate**
+7. **Screen 5 (Connection Test):**
+   - Click **Test** → ✅ Success
+   - Click **Finish**
+
+### Step 2.2: Create Secrets in Harness (auto-stored in AWS SM)
+
+1. Go to **Project Settings** → **Secrets** → **+ New Secret** → **Text**
+2. Select **Secret Manager**: `aws-secrets-manager`
+3. Create 3 secrets:
 
 | Secret Name | Value |
 |---|---|
@@ -64,25 +88,62 @@ Go to **Project Settings → Secrets → + New Secret → Text**:
 | `jwt_secret` | Any random string (e.g. `my-super-secret-jwt-key-2024`) |
 | `jwt_refresh_secret` | Any random string (e.g. `my-refresh-secret-key-2024`) |
 
-> These secrets are stored encrypted in Harness. Never in Git. The pipeline reads them at deploy time via `<+secrets.getValue("mongo_uri")>`.
+4. Click **Save** for each
+
+> **How it works:**
+> - When you create a secret in Harness and select the AWS SM connector → Harness **automatically stores it in AWS Secrets Manager** for you
+> - You do NOT need to go to AWS Console to create secrets manually
+> - At deploy time: Harness reads from AWS SM → injects into `values.yaml` → Go templating puts values into K8s Secret → deployed to cluster
+> - Actual values NEVER appear in Git
+>
+> **Why not just use Harness built-in?**
+> AWS Secrets Manager gives you: automatic rotation, audit trail (CloudTrail), cross-account access, and compliance (SOC2, HIPAA). Production teams use external secret managers.
 
 ---
 
-## Step 3: Create OPA Policy (Governance)
+## Step 3: Create OPA Policies (Governance)
 
-1. Go to **Project Settings → Governance → Policies**
+### What is OPA?
+
+Open Policy Agent (OPA) lets organizations define rules as code. Instead of manually checking:
+- Does every container have resource limits?
+- Is someone deploying without approval?
+- Is it Friday evening (risky for production)?
+
+OPA evaluates these rules **automatically before deployment**. If a pipeline violates any policy, Harness **blocks the execution**.
+
+### Step 3.1: Create Policy — No Friday Deploys
+
+1. Go to **Project Settings** → **Governance** → **Policies**
 2. Click **+ New Policy**
 3. Name: `no-friday-deploy`
 4. Paste the Rego code from `.harness/policies/no-friday-deploy.rego`
-5. Save
-6. Go to **Policy Sets** → **+ New Policy Set**
-7. Name: `production-governance`
-8. Entity Type: **Pipeline**
-9. Event: **On Run**
-10. Add policy: `no-friday-deploy` → Action: **Error and Exit**
-11. Save
+5. Click **Save**
 
-> Now if anyone tries to deploy on Friday after 5 PM → pipeline BLOCKED.
+### Step 3.2: Create Policy — K8s Governance
+
+1. Click **+ New Policy**
+2. Name: `k8s-governance`
+3. Paste the Rego code from `.harness/policies/k8s-governance.rego`
+4. Click **Save**
+
+### Step 3.3: Create Policy Set
+
+1. Go to **Policy Sets** → **+ New Policy Set**
+2. Name: `production-governance`
+3. Entity Type: **Pipeline**
+4. Event: **On Run**
+5. Add policies:
+   - `no-friday-deploy` → Action: **Error and Exit**
+   - `k8s-governance` → Action: **Warn and Continue**
+6. Click **Save**
+
+> **What each policy enforces:**
+>
+> | Policy | Rules |
+> |--------|-------|
+> | `no-friday-deploy` | No deploys on Friday after 5 PM, must have Approval stage |
+> | `k8s-governance` | Must have CI stage before deploy, must have rollback, no hardcoded AWS IDs |
 
 ---
 
@@ -180,11 +241,23 @@ Import: `Episode-08/mobile ecommerce app/.harness/pipeline-security-governance.y
 ## Step 7: Run Pipeline
 
 ```
-Stage 1: Build & Push Backend + Frontend to ECR ✅
-Stage 2: Manual Approval ⏸️ (click Approve)
-Stage 3: Deploy to EKS ✅
-  ├── K8sRollingDeploy (secrets injected at runtime)
-  ├── Verify Deployment
+Stage 1: Build & Push ✅
+  ├── Install Backend Dependencies
+  ├── Backend Lint & Build Check
+  ├── Install Frontend Dependencies
+  ├── Frontend Build Check
+  ├── Create ECR Repos
+  ├── Push Backend to ECR
+  └── Push Frontend to ECR
+
+Stage 2: OPA Policy Evaluation ✅
+  └── Evaluate Governance Policies (checks Policy Set: production-governance)
+
+Stage 3: Manual Approval ⏸️ (click Approve)
+
+Stage 4: Deploy to EKS ✅
+  ├── K8sRollingDeploy (secrets injected from AWS SM at runtime)
+  ├── Verify Deployment (kubectl get pods/svc)
   └── Rollback (auto on failure)
 ```
 
@@ -194,18 +267,31 @@ Stage 3: Deploy to EKS ✅
 
 | Feature | What It Does | Where |
 |---------|-------------|-------|
-| **Secrets** | MONGO_URI, JWT stored encrypted, never in Git | Project Settings → Secrets |
+| **AWS Secrets Manager** | Secrets stored in AWS (rotation, audit, cross-account) | AWS Console + Harness Connector |
+| **Secrets in K8s** | Injected at deploy time via values.yaml + Go templating | `values.yaml` → `secret.yaml` |
 | **Approval Gate** | Pipeline pauses until someone clicks Approve | Stage 2 in pipeline |
-| **OPA Policy** | Blocks Friday deploys, requires approval stage | Governance → Policies |
-| **Secret Manager** | Harness built-in (can connect to AWS SM, Vault) | Account Settings → Secret Managers |
+| **OPA Policy** | Blocks Friday deploys, requires approval + CI stage | Governance → Policies |
+| **Policy as Code** | Rules written in Rego, enforced automatically on every run | `.harness/policies/` |
+| **Governance** | Standards every team must follow (no manual checking) | Policy Sets → On Run |
 
 ---
 
-## Test OPA Policy
+## Test OPA Policies
 
-1. Remove the Approval stage from pipeline
-2. Try to run → OPA blocks it: "Production deployments must have an Approval stage"
+### Test 1: Remove Approval Stage
+1. Edit pipeline → remove the `approval` stage
+2. Try to run → OPA blocks: "Production deployments must have an Approval stage"
 3. Add it back → runs normally ✅
+
+### Test 2: Remove CI Stage
+1. Edit pipeline → remove the `build-and-push` stage
+2. Try to run → OPA warns: "Pipeline must include a CI stage before deployment"
+3. Add it back → runs normally ✅
+
+### Test 3: Friday After 5 PM
+1. Wait until Friday after 5 PM (or set your system time)
+2. Try to run → OPA blocks: "Deployments not allowed on Friday after 5 PM"
+3. Run on Monday → works ✅
 
 ---
 
@@ -215,4 +301,7 @@ Stage 3: Deploy to EKS ✅
 kubectl delete namespace mobile-ecommerce
 aws ecr delete-repository --repository-name mobile-ecommerce-backend --force --region us-east-1
 aws ecr delete-repository --repository-name mobile-ecommerce-frontend --force --region us-east-1
+aws secretsmanager delete-secret --secret-id harness/mongo_uri --force-delete-without-recovery --region us-east-1
+aws secretsmanager delete-secret --secret-id harness/jwt_secret --force-delete-without-recovery --region us-east-1
+aws secretsmanager delete-secret --secret-id harness/jwt_refresh_secret --force-delete-without-recovery --region us-east-1
 ```

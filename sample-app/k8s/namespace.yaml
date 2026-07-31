@@ -1,7 +1,0 @@
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: harness-course
-  labels:
-    app: harness-course
-    managed-by: harness

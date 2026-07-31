@@ -1,14 +1,9 @@
 import RateLimit from 'express-rate-limit';
-import RedisStore from 'rate-limit-redis';
-import redis from './clients/redis';
 import Boom from 'boom';
 
+// Use in-memory rate limiting (no Redis dependency for K8s deployment)
 const limiter = new RateLimit({
-  store: new RedisStore({
-    client: redis,
-    resetExpiryOnChange: true,
-    expiry: 30,
-  }),
+  windowMs: 30 * 1000,
   max: 1000,
   handler: (req, res, next) => {
     next(Boom.tooManyRequests());

@@ -3,29 +3,25 @@
 ### App
 **Mobile E-Commerce App** (React frontend + Node.js/Express backend + MongoDB)
 
-### Flow
+### Pipeline Flow
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│  EPISODE 8 FLOW                                                  │
-│                                                                   │
-│  Code Push → CI Pipeline                                         │
-│    ├── Build & Test                                              │
-│    ├── Security Scan (from Ep 5 — reuse)                        │
-│    └── Push to ECR                                               │
-│                                                                   │
-│  CD Pipeline                                                      │
-│    ├── OPA Policy Check ← "No deploy on Friday after 5 PM"      │
-│    ├── Manual Approval Gate ← Manager must approve               │
-│    ├── Deploy to EKS (Helm or K8s manifests)                    │
-│    └── Secrets from AWS Secrets Manager (not hardcoded!)         │
-│                                                                   │
-│  NEW IN THIS EPISODE:                                            │
-│    1. AWS Secrets Manager (store DB passwords, JWT secrets)      │
-│    2. Approval Gates (Manual + optional Jira)                    │
-│    3. OPA Policies (block deploys based on rules)                │
-│    4. Encrypted Variables (Harness secrets, not plaintext)       │
-└─────────────────────────────────────────────────────────────────┘
+Stage 1: Build & Push (CI) — parallel
+  ├── [parallel] Backend Build Check | Frontend Build Check
+  ├── Create ECR Repos
+  └── [parallel] Push Backend | Push Frontend
+
+Stage 2: OPA Policy Evaluation (Custom)
+  └── Evaluate production-governance Policy Set
+
+Stage 3: Manual Approval
+  └── Approve Deployment (1 approver from project users)
+
+Stage 4: Deploy to EKS (CD)
+  ├── K8sRollingDeploy
+  ├── Verify Deployment
+  └── Rollback (auto on failure)
+
 ```
 
 ### Topics to Cover

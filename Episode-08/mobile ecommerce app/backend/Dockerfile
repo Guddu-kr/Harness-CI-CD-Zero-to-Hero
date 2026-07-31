@@ -15,4 +15,4 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY package.json ./
 EXPOSE 4000
 ENV NODE_ENV=production
-CMD ["node", "dist/index.js"]
+CMD ["node", "dist/app.js"]

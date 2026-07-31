@@ -1,17 +1,21 @@
 # ============================================
-# OPA Policy: No Deployments on Friday After 5 PM
-# This policy blocks production deployments on Fridays
-# after 5 PM to prevent weekend incidents.
+# OPA Policy: Production Deployment Governance
+# ============================================
+# This policy enforces enterprise security standards:
+#   1. No deployments on Friday after 5 PM (prevent weekend incidents)
+#   2. Production deployments must have an Approval stage
 #
 # How to use in Harness:
-#   1. Go to Project Settings → Governance → Policies
+#   1. Go to Project Settings -> Governance -> Policies
 #   2. Create new policy with this Rego code
-#   3. Create Policy Set → attach to pipeline
-#   4. Set enforcement: "Error and Exit" (blocks pipeline)
+#   3. Create Policy Set -> attach to pipeline
+#   4. Entity Type: Pipeline
+#   5. Event: On Run
+#   6. Enforcement: Error and Exit (blocks pipeline)
 # ============================================
 package pipeline
 
-# Deny deployment on Friday after 17:00 (5 PM)
+# Rule 1: Deny deployment on Friday after 17:00 (5 PM)
 deny[msg] {
     input.pipeline.stages[_].stage.type == "Deployment"
     time.now_ns() > 0
@@ -22,7 +26,7 @@ deny[msg] {
     msg := "Deployments to production are not allowed on Friday after 5 PM. Please deploy on Monday."
 }
 
-# Deny deployment without approval stage
+# Rule 2: Deny deployment without approval stage
 deny[msg] {
     deployment_stages := [s | s := input.pipeline.stages[_]; s.stage.type == "Deployment"]
     count(deployment_stages) > 0

@@ -1,9 +1,22 @@
+# ============================================
+# VALUES.YAML — Harness resolves ALL expressions here at deploy time
+# Manifests reference these via Go templating: {{.Values.xxx}}
+# ============================================
+
+# --- IMAGES ---
 # backendImage: Connected via ECR artifact source in Harness Service
-#   → Harness fetches it automatically using aws_account connector
-#   → Tracks versions, enables tag selection, rollback knows which image to use
+#   Harness fetches it automatically using aws_account connector
+#   Tracks versions, enables tag selection, rollback knows which image to use
 #
 # frontendImage: No artifact source needed — EKS nodes have IAM permission to pull from ECR
-#   → Kubernetes pulls it directly using the full URL
-#   → Same tag as backend (v1, v2...) since both build in same pipeline run
+#   Kubernetes pulls it directly using the full URL
+#   Same tag as backend (v1, v2...) since both build in same pipeline run
 backendImage: <+artifact.image>
 frontendImage: <+variable.aws_account_id>.dkr.ecr.<+variable.aws_region>.amazonaws.com/mobile-ecommerce-frontend:v<+pipeline.sequenceId>
+
+# --- SECRETS (from AWS Secrets Manager via Harness) ---
+# These are stored in AWS Secrets Manager, connected to Harness via connector
+# Harness resolves them at deploy time — actual values NEVER appear in Git
+mongoUri: <+secrets.getValue("mongo_uri")>
+jwtSecret: <+secrets.getValue("jwt_secret")>
+jwtRefreshSecret: <+secrets.getValue("jwt_refresh_secret")>

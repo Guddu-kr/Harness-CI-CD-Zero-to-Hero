@@ -1,8 +1,0 @@
-apiVersion: v2
-name: harness-course-app
-description: Helm chart for the Harness CI/CD Zero to Hero course application
-type: application
-version: 1.0.0
-appVersion: "1.0.0"
-maintainers:
-  - name: Yaswanth Reddy

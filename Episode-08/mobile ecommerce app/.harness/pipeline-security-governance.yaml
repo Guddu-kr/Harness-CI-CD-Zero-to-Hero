@@ -1,10 +1,13 @@
 # ============================================
 # PIPELINE: Episode 8 — Enterprise Security & Governance
 # ============================================
-# Stage 1: Build & Push (CI)
-# Stage 2: OPA Policy Evaluation
-# Stage 3: Manual Approval Gate
+# Stage 1: Build & Push Backend + Frontend to ECR (CI)
+# Stage 2: OPA Policy Evaluation (Custom stage — visible governance check)
+# Stage 3: Manual Approval Gate (someone must approve)
 # Stage 4: Deploy to EKS (CD) — Secrets from AWS Secrets Manager
+#
+# OPA Policy Sets also run AUTOMATICALLY on pipeline run (via Policy Sets)
+# Stage 2 is an ADDITIONAL in-pipeline governance check for visibility
 #
 # ============================================
 # CHANGE THESE VALUES:
@@ -41,7 +44,7 @@ pipeline:
     - stage:
         name: build-and-push
         identifier: build_and_push
-        description: "Build both services and push to ECR"
+        description: "Build both services, run tests, push to ECR"
         type: CI
         spec:
           cloneCodebase: true
@@ -53,6 +56,31 @@ pipeline:
             spec: {}
           execution:
             steps:
+              - parallel:
+                  - step:
+                      type: Run
+                      name: Backend Build Check
+                      identifier: backend_build
+                      spec:
+                        shell: Sh
+                        image: node:18-alpine
+                        command: |-
+                          cd "Episode-08/mobile ecommerce app/backend"
+                          yarn install --frozen-lockfile
+                          yarn build
+
+                  - step:
+                      type: Run
+                      name: Frontend Build Check
+                      identifier: frontend_build
+                      spec:
+                        shell: Sh
+                        image: node:18-alpine
+                        command: |-
+                          cd "Episode-08/mobile ecommerce app/frontend"
+                          yarn install --frozen-lockfile
+                          yarn build
+
               - step:
                   type: Run
                   name: Create ECR Repos
@@ -68,39 +96,76 @@ pipeline:
                       aws ecr create-repository --repository-name mobile-ecommerce-backend --region <+variable.aws_region> 2>/dev/null || true
                       aws ecr create-repository --repository-name mobile-ecommerce-frontend --region <+variable.aws_region> 2>/dev/null || true
 
-              - step:
-                  type: BuildAndPushECR
-                  name: Push Backend
-                  identifier: push_backend
-                  spec:
-                    connectorRef: account.aws_account
-                    region: <+variable.aws_region>
-                    account: <+variable.aws_account_id>
-                    imageName: mobile-ecommerce-backend
-                    tags:
-                      - v<+pipeline.sequenceId>
-                      - latest
-                    dockerfile: "Episode-08/mobile ecommerce app/backend/Dockerfile"
-                    context: "Episode-08/mobile ecommerce app/backend"
+              - parallel:
+                  - step:
+                      type: BuildAndPushECR
+                      name: Push Backend
+                      identifier: push_backend
+                      spec:
+                        connectorRef: account.aws_account
+                        region: <+variable.aws_region>
+                        account: <+variable.aws_account_id>
+                        imageName: mobile-ecommerce-backend
+                        tags:
+                          - v<+pipeline.sequenceId>
+                          - latest
+                        dockerfile: "Episode-08/mobile ecommerce app/backend/Dockerfile"
+                        context: "Episode-08/mobile ecommerce app/backend"
 
-              - step:
-                  type: BuildAndPushECR
-                  name: Push Frontend
-                  identifier: push_frontend
-                  spec:
-                    connectorRef: account.aws_account
-                    region: <+variable.aws_region>
-                    account: <+variable.aws_account_id>
-                    imageName: mobile-ecommerce-frontend
-                    tags:
-                      - v<+pipeline.sequenceId>
-                      - latest
-                    dockerfile: "Episode-08/mobile ecommerce app/frontend/Dockerfile"
-                    context: "Episode-08/mobile ecommerce app/frontend"
+                  - step:
+                      type: BuildAndPushECR
+                      name: Push Frontend
+                      identifier: push_frontend
+                      spec:
+                        connectorRef: account.aws_account
+                        region: <+variable.aws_region>
+                        account: <+variable.aws_account_id>
+                        imageName: mobile-ecommerce-frontend
+                        tags:
+                          - v<+pipeline.sequenceId>
+                          - latest
+                        dockerfile: "Episode-08/mobile ecommerce app/frontend/Dockerfile"
+                        context: "Episode-08/mobile ecommerce app/frontend"
 
     # ============================================
-    # STAGE 2: Approval Gate (Manual)
-    # Someone must approve before deployment proceeds
+    # STAGE 2: OPA Policy Evaluation
+    # Visible governance check — evaluates custom payload
+    # Shows students the OPA evaluation in pipeline execution
+    # ============================================
+    - stage:
+        name: policy-evaluation
+        identifier: policy_evaluation
+        description: "OPA governance check before deployment"
+        type: Custom
+        spec:
+          execution:
+            steps:
+              - step:
+                  type: Policy
+                  name: Evaluate Governance Policies
+                  identifier: evaluate_policies
+                  timeout: 10m
+                  spec:
+                    policySets:
+                      - production-governance
+                    type: Custom
+                    policySpec:
+                      payload: |-
+                        {
+                          "pipeline": {
+                            "name": "<+pipeline.name>",
+                            "stages": [
+                              {"stage": {"type": "CI", "name": "build-and-push"}},
+                              {"stage": {"type": "Custom", "name": "policy-evaluation"}},
+                              {"stage": {"type": "Approval", "name": "approval"}},
+                              {"stage": {"type": "Deployment", "name": "deploy-to-production"}}
+                            ]
+                          }
+                        }
+
+    # ============================================
+    # STAGE 3: Approval Gate (Manual)
+    # Pipeline pauses here until someone approves
     # ============================================
     - stage:
         name: approval
@@ -125,13 +190,14 @@ pipeline:
                         - _project_all_users
 
     # ============================================
-    # STAGE 3: Deploy to EKS (CD)
-    # Secrets injected from Harness Secret Manager
+    # STAGE 4: Deploy to EKS (CD)
+    # Secrets from AWS Secrets Manager (via Harness connector)
+    # values.yaml resolves secrets + images at deploy time
     # ============================================
     - stage:
         name: deploy-to-production
         identifier: deploy_to_production
-        description: "Deploy to EKS with secrets from Secret Manager"
+        description: "Deploy to EKS with secrets from AWS Secrets Manager"
         type: Deployment
         failureStrategies:
           - onFailure:
