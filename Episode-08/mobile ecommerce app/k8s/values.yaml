@@ -17,6 +17,10 @@ frontendImage: <+variable.aws_account_id>.dkr.ecr.<+variable.aws_region>.amazona
 # --- SECRETS (from AWS Secrets Manager via Harness) ---
 # These are stored in AWS Secrets Manager, connected to Harness via connector
 # Harness resolves them at deploy time — actual values NEVER appear in Git
+#
+# mongoUri: Connection string to MongoDB running inside the cluster
+# mongoPassword: Root password for MongoDB container
 mongoUri: <+secrets.getValue("mongo_uri")>
+mongoPassword: <+secrets.getValue("mongo_password")>
 jwtSecret: <+secrets.getValue("jwt_secret")>
 jwtRefreshSecret: <+secrets.getValue("jwt_refresh_secret")>

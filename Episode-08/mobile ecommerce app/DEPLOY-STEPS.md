@@ -84,7 +84,8 @@ Build & Test → OPA Policy Check → Manual Approval → Deploy with Secrets
 
 | Secret Name | Value |
 |---|---|
-| `mongo_uri` | `mongodb+srv://user:password@cluster.mongodb.net/ecommerce` |
+| `mongo_uri` | `mongodb://admin:admin123@mongodb:27017/ecommerce?authSource=admin` |
+| `mongo_password` | `admin123` |
 | `jwt_secret` | Any random string (e.g. `my-super-secret-jwt-key-2024`) |
 | `jwt_refresh_secret` | Any random string (e.g. `my-refresh-secret-key-2024`) |
 
@@ -302,6 +303,7 @@ kubectl delete namespace mobile-ecommerce
 aws ecr delete-repository --repository-name mobile-ecommerce-backend --force --region us-east-1
 aws ecr delete-repository --repository-name mobile-ecommerce-frontend --force --region us-east-1
 aws secretsmanager delete-secret --secret-id harness/mongo_uri --force-delete-without-recovery --region us-east-1
+aws secretsmanager delete-secret --secret-id harness/mongo_password --force-delete-without-recovery --region us-east-1
 aws secretsmanager delete-secret --secret-id harness/jwt_secret --force-delete-without-recovery --region us-east-1
 aws secretsmanager delete-secret --secret-id harness/jwt_refresh_secret --force-delete-without-recovery --region us-east-1
 ```
