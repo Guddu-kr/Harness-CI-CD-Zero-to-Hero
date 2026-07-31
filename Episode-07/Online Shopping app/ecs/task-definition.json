@@ -1,5 +1,3 @@
-';plokijuyhgtfrdefrgtyhjukilop;lokijuyhgt
-
 {
     "family": "online-shopping",
     "networkMode": "awsvpc",
@@ -17,7 +15,7 @@
             "essential": true,
             "portMappings": [
                 {
-                    "containerPort": 8080,
+                    "containerPort": 808000000000,
                     "protocol": "tcp"
                 }
             ],
