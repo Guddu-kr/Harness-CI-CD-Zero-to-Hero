@@ -216,6 +216,12 @@ resource "aws_iam_role_policy_attachment" "node_AmazonEC2ContainerRegistryPullOn
   role       = aws_iam_role.eks_nodes.name
 }
 
+# Secrets Manager access (for Harness delegate to read/write secrets)
+resource "aws_iam_role_policy_attachment" "node_SecretsManagerReadWrite" {
+  policy_arn = "arn:aws:iam::aws:policy/SecretsManagerReadWrite"
+  role       = aws_iam_role.eks_nodes.name
+}
+
 # ═══════════════════════════════════════════════════════════════════
 # EKS Access Entry — Allow GitHub Actions OIDC role to deploy
 # NOTE: Update github_actions_role_name variable with your actual role name
