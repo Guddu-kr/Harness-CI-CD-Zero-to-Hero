@@ -219,6 +219,24 @@ pipeline:
                     onDelegate: true
                   timeout: 5m
 
+              - step:
+                  type: ShellScript
+                  name: Health Check
+                  identifier: health_check
+                  spec:
+                    shell: Bash
+                    source:
+                      type: Inline
+                      spec:
+                        script: |-
+                          echo "Waiting for backend pods to be ready..."
+                          kubectl wait --for=condition=ready pod -l app=backend -n mobile-ecommerce --timeout=120s
+                          echo "Waiting for frontend pods to be ready..."
+                          kubectl wait --for=condition=ready pod -l app=frontend -n mobile-ecommerce --timeout=120s
+                          echo "Health Check PASSED"
+                    onDelegate: true
+                  timeout: 5m
+
             rollbackSteps:
               - step:
                   name: Rollback
