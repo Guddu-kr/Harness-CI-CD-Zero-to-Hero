@@ -64,16 +64,21 @@ Build & Test → OPA Policy Check → Manual Approval → Deploy with Secrets
 4. **Screen 1 (Overview):**
    - Name: `aws-secrets-manager`
 5. **Screen 2 (Details):**
-   - Credential Type: **AWS Access Key**
-   - Access Key ID: paste your AWS Access Key (or select secret `aws_access_key_id`)
-   - Secret Access Key: select secret `aws_secret_access_key`
+   - Credential Type: **Assume IAM role on Delegate**
    - Secret Name Prefix: `harness/`
    - Region: `us-east-1`
    - Check: **Force delete without recovery** ✅
 6. **Screen 3 (Delegates Setup):**
-   - Select: **Use any available Delegate**
+   - Select: **Connect only via Delegates which has all of the following tags**
+   - Tag: `eks-k8s-delegate`
 7. **Screen 4 (Connection Test):**
    - Click **Finish** → ✅ Success
+
+> **Why "Assume IAM role on Delegate"?**
+> - No access keys stored anywhere — zero credentials to rotate
+> - The K8s delegate runs on EKS node which has IAM role with AWS access
+> - Delegate's IAM role accesses AWS Secrets Manager directly
+> - Production standard: no long-lived keys, automatic rotation
 
 ### Step 2.2: Create Secrets in Harness (stored in AWS SM)
 
