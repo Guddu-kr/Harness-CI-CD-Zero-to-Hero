@@ -2,7 +2,7 @@
 # OPA Policy: Production Deployment Governance
 # ============================================
 # This policy enforces enterprise security standards:
-#   1. No deployments on Friday after 5 PM (prevent weekend incidents) Friday after 5 PM (17:00 - 23:59)
+#   1. No deployments on Friday after 5 PM (prevent weekend incidents)
 #   2. Production deployments must have an Approval stage
 #
 # How to use in Harness:
