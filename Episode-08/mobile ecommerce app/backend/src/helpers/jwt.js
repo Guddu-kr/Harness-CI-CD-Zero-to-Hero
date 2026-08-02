@@ -1,7 +1,9 @@
 import JWT from "jsonwebtoken";
 import Boom from "boom";
 
-import redis from "../clients/redis";
+// In-memory token store (replaces Redis for K8s deployment)
+// In production, use Redis or a database for token storage
+const tokenStore = new Map();
 
 const signAccessToken = (data) => {
 	return new Promise((resolve, reject) => {
@@ -61,8 +63,7 @@ const signRefreshToken = (user_id) => {
 				reject(Boom.internal());
 			}
 
-			redis.set(user_id, token, "EX", 180 * 24 * 60 * 60);
-
+			tokenStore.set(user_id, token);
 			resolve(token);
 		});
 	});
@@ -79,7 +80,7 @@ const verifyRefreshToken = async (refresh_token) => {
 				}
 
 				const { user_id } = payload;
-				const user_token = await redis.get(user_id);
+				const user_token = tokenStore.get(user_id);
 
 				if (!user_token) {
 					return reject(Boom.unauthorized());
