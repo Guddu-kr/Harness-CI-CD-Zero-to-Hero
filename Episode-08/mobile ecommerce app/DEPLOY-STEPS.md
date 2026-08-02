@@ -54,33 +54,13 @@ Build & Test → OPA Policy Check → Manual Approval → Deploy with Secrets
 
 ---
 
-## Step 2: Store Secrets in AWS Secrets Manager
+## Step 2: Store Secrets in Harness Secret Manager
 
-### Step 2.1: Add AWS Secrets Manager Connector in Harness
-
-1. Go to **Account Settings** → **Connectors** → **+ New Connector**
-2. Choose: **Secret Managers** → **AWS Secrets Manager**
-3. **Screen 1 (Overview):**
-   - Name: `aws-secrets-manager`
-4. **Screen 2 (Credentials):**
-   - Credential Type: **AWS Access Key**
-   - Access Key: select secret `aws_access_key_id`
-   - Secret Key: select secret `aws_secret_access_key`
-   - (Or use **Assume Role using Delegate** if delegate has IAM access)
-5. **Screen 3 (AWS SM Configuration):**
-   - Region: `us-east-1`
-   - Secret Name Prefix: `harness/`
-6. **Screen 4 (Delegates Setup):**
-   - Select: **Use any available Delegate**
-7. **Screen 5 (Connection Test):**
-   - Click **Test** → ✅ Success
-   - Click **Finish**
-
-### Step 2.2: Create Secrets in Harness (auto-stored in AWS SM)
+### Step 2.1: Create Secrets in Harness (Built-in Secret Manager)
 
 1. Go to **Project Settings** → **Secrets** → **+ New Secret** → **Text**
-2. Select **Secret Manager**: `aws-secrets-manager`
-3. Create 3 secrets:
+2. Secret Manager: **Harness Built-in Secret Manager** (default)
+3. Create 4 secrets:
 
 | Secret Name | Value |
 |---|---|
@@ -92,13 +72,12 @@ Build & Test → OPA Policy Check → Manual Approval → Deploy with Secrets
 4. Click **Save** for each
 
 > **How it works:**
-> - When you create a secret in Harness and select the AWS SM connector → Harness **automatically stores it in AWS Secrets Manager** for you
-> - You do NOT need to go to AWS Console to create secrets manually
-> - At deploy time: Harness reads from AWS SM → injects into `values.yaml` → Go templating puts values into K8s Secret → deployed to cluster
+> - Secrets are stored encrypted in Harness Built-in Secret Manager (Google KMS backed)
+> - At deploy time: Harness resolves `<+secrets.getValue("mongo_uri")>` → injects into `values.yaml` → Go templating puts values into K8s Secret → deployed to cluster
 > - Actual values NEVER appear in Git
+> - Same `<+secrets.getValue()>` syntax works with ANY secret manager (Built-in, AWS SM, Vault)
 >
-> **Why not just use Harness built-in?**
-> AWS Secrets Manager gives you: automatic rotation, audit trail (CloudTrail), cross-account access, and compliance (SOC2, HIPAA). Production teams use external secret managers.
+> **Production note:** In real companies, you'd connect AWS Secrets Manager or HashiCorp Vault for rotation, audit trails, and compliance. The code/pipeline stays exactly the same — only the connector changes.
 
 ---
 
@@ -298,12 +277,12 @@ Stage 4: Deploy to EKS ✅
 
 ## Cleanup
 
+> **Important:** Delete from Harness UI FIRST, then clean K8s + ECR.
+> 1. Harness UI → Project Settings → Secrets → delete all 4 secrets
+> 2. Then run the commands below
+
 ```bash
 kubectl delete namespace mobile-ecommerce
 aws ecr delete-repository --repository-name mobile-ecommerce-backend --force --region us-east-1
 aws ecr delete-repository --repository-name mobile-ecommerce-frontend --force --region us-east-1
-aws secretsmanager delete-secret --secret-id harness/mongo_uri --force-delete-without-recovery --region us-east-1
-aws secretsmanager delete-secret --secret-id harness/mongo_password --force-delete-without-recovery --region us-east-1
-aws secretsmanager delete-secret --secret-id harness/jwt_secret --force-delete-without-recovery --region us-east-1
-aws secretsmanager delete-secret --secret-id harness/jwt_refresh_secret --force-delete-without-recovery --region us-east-1
 ```
