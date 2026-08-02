@@ -54,31 +54,35 @@ Stage 4: Deploy to EKS (CD)
 
 ## Step 2: Store Secrets in AWS Secrets Manager
 
-### Step 2.1: Add AWS Secrets Manager Connector in Harness
+### Step 2.1: Create AWS Secrets Manager Connector (via Secrets path)
 
-1. Go to **Account Settings** → **Connectors** → **+ New Connector**
-2. Choose: **Secret Managers** → **AWS Secrets Manager**
-3. **Screen 1 (Overview):**
+1. Go to **Project Settings** → **Secrets** → **+ New Secret** → **Text**
+2. Click on **Secret Manager** dropdown → **+ Secret Manager**
+3. Select: **AWS Secrets Manager**
+4. **Screen 1 (Overview):**
    - Name: `aws-secrets-manager`
-4. **Screen 2 (Credentials):**
-   - Credential Type: **AWS Access Key**
-   - Access Key: select secret `aws_access_key_id`
-   - Secret Key: select secret `aws_secret_access_key`
-   - (Or use **Assume Role using Delegate** if delegate has IAM access)
-5. **Screen 3 (AWS SM Configuration):**
-   - Region: `us-east-1`
+5. **Screen 2 (Details):**
+   - Credential Type: **Assume IAM role on Delegate**
    - Secret Name Prefix: `harness/`
-6. **Screen 4 (Delegates Setup):**
-   - Select: **Use any available Delegate**
-7. **Screen 5 (Connection Test):**
-   - Click **Test** → ✅ Success
-   - Click **Finish**
+   - Region: `us-east-1`
+   - Check: **Force delete without recovery** ✅
+6. **Screen 3 (Delegates Setup):**
+   - Select: **Connect only via Delegates which has all of the following tags**
+   - Tag: `eks-k8s-delegate`
+7. **Screen 4 (Connection Test):**
+   - Click **Finish** → ✅ Success
 
-### Step 2.2: Create Secrets in Harness (auto-stored in AWS SM)
+> **Why "Assume IAM role on Delegate"?**
+> - No access keys stored anywhere — zero credentials to rotate
+> - The K8s delegate runs on EKS node which has IAM role with AWS access
+> - Delegate's IAM role accesses AWS Secrets Manager directly
+> - Production standard: no long-lived keys, automatic rotation
+
+### Step 2.2: Create Secrets in Harness (stored in AWS SM)
 
 1. Go to **Project Settings** → **Secrets** → **+ New Secret** → **Text**
 2. Select **Secret Manager**: `aws-secrets-manager`
-3. Create 3 secrets:
+3. Create 4 secrets:
 
 | Secret Name | Value |
 |---|---|
@@ -90,14 +94,13 @@ Stage 4: Deploy to EKS (CD)
 4. Click **Save** for each
 
 > **How it works:**
-> - When you create a secret in Harness and select the AWS SM connector → Harness **automatically stores it in AWS Secrets Manager** for you
-> - You do NOT need to go to AWS Console to create secrets manually
+> - When you create a secret and select `aws-secrets-manager` → Harness **automatically stores it in AWS Secrets Manager**
 > - At deploy time: Harness reads from AWS SM → injects into `values.yaml` → Go templating puts values into K8s Secret → deployed to cluster
 > - Actual values NEVER appear in Git
+> - **Force delete without recovery** = you can delete and recreate secrets instantly (no 7-day wait)
 >
-> **Why not just use Harness built-in?**
-> AWS Secrets Manager gives you: automatic rotation, audit trail (CloudTrail), cross-account access, and compliance (SOC2, HIPAA). Production teams use external secret managers.
-
+> **Why AWS Secrets Manager?**
+> Rotation, audit trail (CloudTrail), cross-account access, compliance (SOC2, HIPAA). Production teams use external secret managers.
 ---
 
 ## 📝 Key Takeaways
