@@ -2,7 +2,7 @@
 # OPA Policy: Production Deployment Governance
 # ============================================
 # This policy enforces enterprise security standards:
-#   1. No deployments on Friday after 5 PM (prevent weekend incidents)
+#   1. No deployments on Friday after 5 PM (prevent weekend incidents) Friday after 5 PM (17:00 - 23:59)
 #   2. Production deployments must have an Approval stage
 #
 # How to use in Harness:
@@ -15,7 +15,7 @@
 # ============================================
 package pipeline
 
-# Rule 1: Deny deployment on Friday after 17:00 (5 PM)
+# Rule 1: Deny deployment on Friday after 5 PM (17:00 - 23:59)
 deny[msg] {
     input.pipeline.stages[_].stage.type == "Deployment"
     time.now_ns() > 0
