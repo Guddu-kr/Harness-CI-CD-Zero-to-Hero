@@ -14,10 +14,9 @@
 backendImage: <+artifact.image>
 frontendImage: <+variable.aws_account_id>.dkr.ecr.<+variable.aws_region>.amazonaws.com/mobile-ecommerce-frontend:v<+pipeline.sequenceId>
 
-# --- SECRETS (from Harness Built-in Secret Manager) ---
-# Stored encrypted in Harness, resolved at deploy time
-# Same syntax works with AWS SM, Vault, or any connected secret manager
-# Actual values NEVER appear in Git
+# --- SECRETS (from AWS Secrets Manager via Harness) ---
+# Stored in AWS Secrets Manager, connected via Harness connector
+# Harness resolves them at deploy time — actual values NEVER appear in Git
 #
 # mongoUri: Connection string to MongoDB running inside the cluster
 # mongoPassword: Root password for MongoDB container
