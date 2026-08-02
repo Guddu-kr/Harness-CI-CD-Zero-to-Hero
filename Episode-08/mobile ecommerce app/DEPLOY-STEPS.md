@@ -83,6 +83,8 @@ Build & Test → OPA Policy Check → Manual Approval → Deploy with Secrets
 
 ## Step 3: Create OPA Policies (Governance)
 
+> ⚠️ **Note:** OPA Governance is an Enterprise feature — not available on the free plan. The Rego policy code is provided in `.harness/policies/` for reference. If you have Enterprise plan, follow the steps below. Otherwise, skip to Step 4.
+
 ### What is OPA?
 
 Open Policy Agent (OPA) lets organizations define rules as code. Instead of manually checking:
@@ -247,12 +249,27 @@ Stage 4: Deploy to EKS ✅
 
 | Feature | What It Does | Where |
 |---------|-------------|-------|
-| **AWS Secrets Manager** | Secrets stored in AWS (rotation, audit, cross-account) | AWS Console + Harness Connector |
-| **Secrets in K8s** | Injected at deploy time via values.yaml + Go templating | `values.yaml` → `secret.yaml` |
+| **Harness Secrets** | Secrets stored encrypted, injected at deploy time | Project Settings → Secrets |
+| **Secrets in K8s** | Injected via values.yaml + Go templating | `values.yaml` → `secret.yaml` |
 | **Approval Gate** | Pipeline pauses until someone clicks Approve | Stage 2 in pipeline |
 | **OPA Policy** | Blocks Friday deploys, requires approval + CI stage | Governance → Policies |
 | **Policy as Code** | Rules written in Rego, enforced automatically on every run | `.harness/policies/` |
 | **Governance** | Standards every team must follow (no manual checking) | Policy Sets → On Run |
+
+### Free Plan vs Enterprise Plan
+
+| Feature | Free Plan ✅ | Enterprise Plan 💰 |
+|---------|-------------|-------------------|
+| Harness Built-in Secrets | ✅ Available | ✅ Available |
+| Approval Gates (HarnessApproval) | ✅ Available | ✅ Available |
+| K8sRollingDeploy + Rollback | ✅ Available | ✅ Available |
+| Parallel builds | ✅ Available | ✅ Available |
+| AWS Secrets Manager connector | ❌ Not available | ✅ Available |
+| OPA Governance (Policies) | ❌ Not available | ✅ Available |
+| HashiCorp Vault connector | ❌ Not available | ✅ Available |
+| Policy Step in pipeline | ❌ Not available | ✅ Available |
+
+> **For this demo:** We use `pipeline-free-plan.yaml` (3 stages: Build → Approve → Deploy). The full pipeline with OPA stage is in `pipeline-security-governance.yaml` for Enterprise users.
 
 ---
 

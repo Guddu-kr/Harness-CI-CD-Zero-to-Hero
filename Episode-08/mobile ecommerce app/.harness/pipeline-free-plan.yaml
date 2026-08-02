@@ -1,0 +1,229 @@
+# ============================================
+# PIPELINE: Episode 8 — Enterprise Security & Governance (Free Plan)
+# ============================================
+# Stage 1: Build & Push Backend + Frontend to ECR (CI) — Parallel builds
+# Stage 2: Manual Approval Gate (someone must approve)
+# Stage 3: Deploy to EKS (CD) — Secrets from Harness Secret Manager
+#
+# NOTE: OPA Policies + AWS Secrets Manager require Enterprise plan.
+# This pipeline uses Harness Built-in Secrets + Approval Gate (works on free).
+# The full pipeline with OPA stage is in: pipeline-security-governance.yaml
+#
+# ============================================
+# CHANGE THESE VALUES:
+# ============================================
+#   projectIdentifier: HarnessCICDZerotoHero
+#   orgIdentifier: default
+#   connectorRef: account.Github
+#   repoName: Harness-CI-CD-Zero-to-Hero
+#   connectorRef: account.aws_account
+#   serviceRef: mobileecommerce
+#   environmentRef: production
+#   infrastructureDefinitions: k8sdelegate
+# ============================================
+pipeline:
+  name: episode8-security-governance
+  identifier: episode8_security_governance
+  # CHANGE THIS: Your project ID
+  projectIdentifier: HarnessCICDZerotoHero
+  # CHANGE THIS: Your org name
+  orgIdentifier: default
+  tags: {}
+  properties:
+    ci:
+      codebase:
+        # CHANGE THIS: Your GitHub connector
+        connectorRef: account.Github
+        # CHANGE THIS: Your repo name
+        repoName: Harness-CI-CD-Zero-to-Hero
+        build: <+input>
+  stages:
+    # ============================================
+    # STAGE 1: Build & Push Backend + Frontend to ECR
+    # ============================================
+    - stage:
+        name: build-and-push
+        identifier: build_and_push
+        description: "Build both services, run tests, push to ECR"
+        type: CI
+        spec:
+          cloneCodebase: true
+          platform:
+            os: Linux
+            arch: Amd64
+          runtime:
+            type: Cloud
+            spec: {}
+          execution:
+            steps:
+              - parallel:
+                  - step:
+                      type: Run
+                      name: Backend Build Check
+                      identifier: backend_build
+                      spec:
+                        shell: Sh
+                        image: node:18-alpine
+                        command: |-
+                          cd "Episode-08/mobile ecommerce app/backend"
+                          yarn install --frozen-lockfile
+                          yarn build
+
+                  - step:
+                      type: Run
+                      name: Frontend Build Check
+                      identifier: frontend_build
+                      spec:
+                        shell: Sh
+                        image: node:18-alpine
+                        command: |-
+                          cd "Episode-08/mobile ecommerce app/frontend"
+                          yarn install --frozen-lockfile
+                          yarn build
+
+              - step:
+                  type: Run
+                  name: Create ECR Repos
+                  identifier: create_ecr
+                  spec:
+                    shell: Sh
+                    image: amazon/aws-cli:latest
+                    envVariables:
+                      AWS_ACCESS_KEY_ID: <+secrets.getValue("aws_access_key_id")>
+                      AWS_SECRET_ACCESS_KEY: <+secrets.getValue("aws_secret_access_key")>
+                      AWS_DEFAULT_REGION: <+variable.aws_region>
+                    command: |-
+                      aws ecr create-repository --repository-name mobile-ecommerce-backend --region <+variable.aws_region> 2>/dev/null || true
+                      aws ecr create-repository --repository-name mobile-ecommerce-frontend --region <+variable.aws_region> 2>/dev/null || true
+
+              - parallel:
+                  - step:
+                      type: BuildAndPushECR
+                      name: Push Backend
+                      identifier: push_backend
+                      spec:
+                        connectorRef: account.aws_account
+                        region: <+variable.aws_region>
+                        account: <+variable.aws_account_id>
+                        imageName: mobile-ecommerce-backend
+                        tags:
+                          - v<+pipeline.sequenceId>
+                          - latest
+                        dockerfile: "Episode-08/mobile ecommerce app/backend/Dockerfile"
+                        context: "Episode-08/mobile ecommerce app/backend"
+
+                  - step:
+                      type: BuildAndPushECR
+                      name: Push Frontend
+                      identifier: push_frontend
+                      spec:
+                        connectorRef: account.aws_account
+                        region: <+variable.aws_region>
+                        account: <+variable.aws_account_id>
+                        imageName: mobile-ecommerce-frontend
+                        tags:
+                          - v<+pipeline.sequenceId>
+                          - latest
+                        dockerfile: "Episode-08/mobile ecommerce app/frontend/Dockerfile"
+                        context: "Episode-08/mobile ecommerce app/frontend"
+
+    # ============================================
+    # STAGE 2: Approval Gate (Manual)
+    # Pipeline pauses here until someone approves
+    # ============================================
+    - stage:
+        name: approval
+        identifier: approval
+        description: "Manual approval required before production deployment"
+        type: Approval
+        spec:
+          execution:
+            steps:
+              - step:
+                  name: Approve Deployment
+                  identifier: approve_deployment
+                  type: HarnessApproval
+                  timeout: 1d
+                  spec:
+                    approvalMessage: "Please review and approve the deployment to production"
+                    includePipelineExecutionHistory: true
+                    approvers:
+                      minimumCount: 1
+                      disallowPipelineExecutor: false
+                      userGroups:
+                        - _project_all_users
+
+    # ============================================
+    # STAGE 3: Deploy to EKS (CD)
+    # Secrets from Harness Built-in Secret Manager
+    # values.yaml resolves secrets + images at deploy time
+    # ============================================
+    - stage:
+        name: deploy-to-production
+        identifier: deploy_to_production
+        description: "Deploy to EKS with secrets from Harness Secret Manager"
+        type: Deployment
+        failureStrategies:
+          - onFailure:
+              errors:
+                - AllErrors
+              action:
+                type: StageRollback
+        spec:
+          deploymentType: Kubernetes
+          service:
+            # CHANGE THIS: Your service ID
+            serviceRef: mobileecommerce
+            serviceInputs:
+              serviceDefinition:
+                type: Kubernetes
+                spec:
+                  artifacts:
+                    primary:
+                      primaryArtifactRef: ecr_backend
+                      sources:
+                        - identifier: ecr_backend
+                          type: Ecr
+                          spec:
+                            tag: v<+pipeline.sequenceId>
+          environment:
+            # CHANGE THIS: Your environment ID
+            environmentRef: production
+            deployToAll: false
+            infrastructureDefinitions:
+              # CHANGE THIS: Your infrastructure ID
+              - identifier: k8sdelegate
+          execution:
+            steps:
+              - step:
+                  name: Rolling Deployment
+                  identifier: rolling_deploy
+                  type: K8sRollingDeploy
+                  timeout: 10m
+                  spec:
+                    skipDryRun: false
+                    pruningEnabled: false
+
+              - step:
+                  type: ShellScript
+                  name: Verify Deployment
+                  identifier: verify
+                  spec:
+                    shell: Bash
+                    source:
+                      type: Inline
+                      spec:
+                        script: |-
+                          kubectl get pods -n mobile-ecommerce
+                          kubectl get svc -n mobile-ecommerce
+                    onDelegate: true
+                  timeout: 5m
+
+            rollbackSteps:
+              - step:
+                  name: Rollback
+                  identifier: rollback
+                  type: K8sRollingRollback
+                  timeout: 10m
+                  spec:
+                    pruningEnabled: false
