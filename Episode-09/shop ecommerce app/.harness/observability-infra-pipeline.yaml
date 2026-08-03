@@ -37,6 +37,18 @@ pipeline:
           # NOTE: KubernetesDirect needs connectorRef on every Run step (unlike Harness Cloud)
           execution:
             steps:
+              # Give delegate permission to apply ArgoCD resources
+              - step:
+                  type: Run
+                  name: Apply Delegate RBAC
+                  identifier: apply_delegate_rbac
+                  spec:
+                    connectorRef: dockerhub # ← CHANGE: your Docker Hub connector
+                    shell: Sh
+                    image: bitnami/kubectl:latest
+                    command: |-
+                      kubectl apply -f "Episode-09/shop ecommerce app/k8s/delegate-rbac.yaml"
+
               - step:
                   type: Run
                   name: Deploy ArgoCD Apps
