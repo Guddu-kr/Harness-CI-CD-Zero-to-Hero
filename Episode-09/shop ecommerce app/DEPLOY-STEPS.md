@@ -288,7 +288,11 @@ helm install argocd gitops-agent/gitops-helm --values override.yaml --namespace 
    - **Service:** Select `shop-ecommerce` (created in Step 5)
    - **Environment:** Select `production` (created in Step 6)
    - Click **Continue**
-4. **Sync Policy:** Manual → Click **Continue**
+4. **Sync Policy:**
+   - Select **Automatic**
+   - Check **Auto-Create Namespace**
+   - Leave all other options unchecked
+   - Click **Continue**
 5. **Source:**
    - Repository: Select from Step 4
    - Path: `Episode-09/shop ecommerce app/k8s/`
