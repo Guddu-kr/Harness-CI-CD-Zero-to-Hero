@@ -160,36 +160,7 @@ helm install argocd gitops-agent/gitops-helm --values override.yaml --namespace 
 
 ---
 
-## Step 4: Install Observability Stack (Prometheus + Grafana + EFK + Jaeger)
-
-> **Fully automated!** One pipeline deploys everything via ArgoCD App-of-Apps.
-> No manual `helm install` or `kubectl apply` needed.
-
-1. Go to **Pipelines → + Create Pipeline → Import from Git**
-2. YAML Path: `Episode-09/shop ecommerce app/.harness/observability-infra-pipeline.yaml`
-3. Click **Run Pipeline**
-4. Wait ~5 minutes — ArgoCD syncs all 3 stacks from Git
-5. Pipeline output shows 3 LoadBalancer URLs:
-
-```
-1. GRAFANA:  http://xxx.elb.amazonaws.com     (admin / admin123)
-2. KIBANA:   http://xxx.elb.amazonaws.com     (elastic / HarnessEFK@2026)
-3. JAEGER:   http://xxx.elb.amazonaws.com
-```
-
-> **How it works (ArgoCD App-of-Apps — MNC pattern):**
-> - Pipeline applies 3 ArgoCD Application manifests
-> - ArgoCD watches Git folders (monitoring/, logging/, tracing/)
-> - Auto-syncs all manifests to cluster
-> - Self-heal: if someone deletes a pod, ArgoCD recreates it
-> - Repo URL + branch auto-detected from pipeline codebase (no YAML editing needed)
->
-> **After this runs once, ArgoCD manages observability forever.**
-> Any change to monitoring/logging/tracing manifests in Git → ArgoCD auto-applies.
-
----
-
-## Step 5: Create GitOps Repository
+## Step 4: Create GitOps Repository
 
 1. Go to **Harness → GitOps → Settings → Repositories**
 2. Click **+ New Repository**
@@ -199,7 +170,7 @@ helm install argocd gitops-agent/gitops-helm --values override.yaml --namespace 
 
 ---
 
-## Step 6: Create GitOps Application
+## Step 5: Create GitOps Application
 
 1. Go to **Harness → GitOps → Applications**
 2. Click **+ New Application**
@@ -207,7 +178,7 @@ helm install argocd gitops-agent/gitops-helm --values override.yaml --namespace 
    - **Name:** `shop-ecommerce`
    - **GitOps Agent:** (select agent from Step 3)
    - **Source:**
-     - Repository: (select from Step 5)
+     - Repository: (select from Step 4)
      - Path: `Episode-09/shop ecommerce app/k8s/`
      - Target Revision: `master`
    - **Destination:**
@@ -221,7 +192,7 @@ helm install argocd gitops-agent/gitops-helm --values override.yaml --namespace 
 
 ---
 
-## Step 7: Create Secrets in Harness (Built-in Secret Manager)
+## Step 6: Create Secrets in Harness (Built-in Secret Manager)
 
 1. Go to **Project Settings → Secrets → + New Secret → Text**
 2. Secret Manager: **Harness Built-in Secret Manager** (default)
@@ -241,7 +212,7 @@ helm install argocd gitops-agent/gitops-helm --values override.yaml --namespace 
 
 ---
 
-## Step 8: Create Harness Service (GitOps)
+## Step 7: Create Harness Service (GitOps)
 
 > **Important:** For GitOps, the Service uses a **Release Repo Manifest** (not K8s Manifest). This tells the `GitOpsUpdateReleaseRepo` step which file to update.
 
@@ -270,7 +241,7 @@ Source: [Harness GitOps Service docs](https://developer.harness.io/docs/continuo
 
 ---
 
-## Step 9: Create Harness Environment + GitOps Cluster
+## Step 8: Create Harness Environment + GitOps Cluster
 
 **Environment:**
 1. Go to **Project Settings → Environments → + New Environment**
@@ -291,7 +262,7 @@ Source: [Harness GitOps Quickstart — Add Cluster](https://developer.harness.io
 
 ---
 
-## Step 10: Configure Slack Notifications
+## Step 9: Configure Slack Notifications
 
 1. Create a Slack Incoming Webhook:
    - Go to your Slack workspace → Apps → Incoming Webhooks → Add
@@ -301,6 +272,26 @@ Source: [Harness GitOps Quickstart — Add Cluster](https://developer.harness.io
 2. Add webhook URL as secret in Harness:
    - Secret ID: `slack_webhook_url`
    - Value: `https://hooks.slack.com/services/xxx/xxx/xxx`
+
+---
+
+## Step 10: Install Observability Stack (Prometheus + Grafana + EFK + Jaeger)
+
+> **Fully automated!** One pipeline deploys everything via ArgoCD App-of-Apps.
+
+1. Go to **Pipelines → + Create Pipeline → Import from Git**
+2. YAML Path: `Episode-09/shop ecommerce app/.harness/observability-infra-pipeline.yaml`
+3. Click **Run Pipeline**
+4. Wait ~5 minutes — ArgoCD syncs all 3 stacks from Git
+5. Pipeline output shows 3 LoadBalancer URLs:
+
+```
+1. GRAFANA:  http://xxx.elb.amazonaws.com     (admin / admin123)
+2. KIBANA:   http://xxx.elb.amazonaws.com     (elastic / HarnessEFK@2026)
+3. JAEGER:   http://xxx.elb.amazonaws.com
+```
+
+> ArgoCD App-of-Apps pattern — after this runs once, ArgoCD manages observability forever.
 
 ---
 
