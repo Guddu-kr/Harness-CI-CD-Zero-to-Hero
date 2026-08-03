@@ -164,55 +164,23 @@ helm install argocd gitops-agent/gitops-helm --values override.yaml --namespace 
 
 1. Go to **Harness → GitOps → Settings → Repositories**
 2. Click **+ New Repository**
-3. Configure:
-   - **Repository URL:** `https://github.com/YOUR-USER/Harness-CI-CD-Zero-to-Hero`
-   - **Authentication:** GitHub PAT (use existing `account.Github` connector credentials)
+3. **Specify Repository Type:** Select **Git**
+4. **Overview** screen:
+   - **Repository Name:** `Harness-CI-CD-Zero-to-Hero`
+   - **GitOps Agent:** Select `gitopsagent` (from Step 3)
+   - **Git Repository URL:** `https://github.com/YOUR-USER/Harness-CI-CD-Zero-to-Hero`
+   - Click **Continue**
+5. **Credentials** screen:
+   - Select **"Specify Credentials For Repository"**
+   - **Connection Type:** HTTPS
+   - **Username:** your GitHub username
+   - **Password/Token:** your GitHub PAT
+   - Click **Continue**
+6. **Verify Connection** → ✅ Success
 
 ---
 
-## Step 5: Create GitOps Application
-
-1. Go to **Harness → GitOps → Applications**
-2. Click **+ New Application**
-3. Configure:
-   - **Name:** `shop-ecommerce`
-   - **GitOps Agent:** (select agent from Step 3)
-   - **Source:**
-     - Repository: (select from Step 4)
-     - Path: `Episode-09/shop ecommerce app/k8s/`
-     - Target Revision: `master`
-   - **Destination:**
-     - Cluster: `https://kubernetes.default.svc` (in-cluster)
-     - Namespace: `shop-ecommerce`
-   - **Sync Policy:**
-     - Auto-Sync: **Enabled**
-     - Self-Heal: **Enabled**
-     - Prune: **Enabled**
-     - Create Namespace: **Enabled**
-
----
-
-## Step 6: Create Secrets in Harness (Built-in Secret Manager)
-
-1. Go to **Project Settings → Secrets → + New Secret → Text**
-2. Secret Manager: **Harness Built-in Secret Manager** (default)
-3. Create these secrets:
-
-| Secret ID | Value |
-|-----------|-------|
-| `shop_app_key` | `base64:xxxxxxx` (run `php artisan key:generate --show`) |
-| `shop_db_username` | `shop_user` |
-| `shop_db_password` | (strong password) |
-| `shop_stripe_key` | `pk_test_xxxxx` |
-| `shop_stripe_secret` | `sk_test_xxxxx` |
-| `shop_mail_host` | `smtp.gmail.com` or SES endpoint |
-| `shop_mail_username` | (email) |
-| `shop_mail_password` | (app password) |
-| `slack_webhook_url` | `https://hooks.slack.com/services/xxx/xxx/xxx` |
-
----
-
-## Step 7: Create Harness Service (GitOps)
+## Step 5: Create Harness Service (GitOps)
 
 > **Important:** For GitOps, the Service uses a **Release Repo Manifest** (not K8s Manifest). This tells the `GitOpsUpdateReleaseRepo` step which file to update.
 
@@ -235,13 +203,11 @@ helm install argocd gitops-agent/gitops-helm --values override.yaml --namespace 
      - Image Path: `shop-ecommerce`
      - Tag: `<+input>`
 
-> The `GitOpsUpdateReleaseRepo` step will update the `image` variable in `values.yaml` via a PR. ArgoCD then syncs the updated manifests.
-
 Source: [Harness GitOps Service docs](https://developer.harness.io/docs/continuous-delivery/gitops/gitops-entities/service/)
 
 ---
 
-## Step 8: Create Harness Environment + GitOps Cluster
+## Step 6: Create Harness Environment + GitOps Cluster
 
 **Environment:**
 1. Go to **Project Settings → Environments → + New Environment**
@@ -256,9 +222,51 @@ Source: [Harness GitOps Service docs](https://developer.harness.io/docs/continuo
    - Identifier: `shopcluster`
    - Agent: `gitopsagent`
 
-> **Key difference from CD (Episodes 6-8):** In GitOps, there is NO Infrastructure Definition. Instead, you link GitOps Clusters directly to the Environment. The agent already knows which cluster to deploy to.
+> **Key difference from CD (Episodes 6-8):** In GitOps, there is NO Infrastructure Definition. Instead, you link GitOps Clusters directly to the Environment.
 
-Source: [Harness GitOps Quickstart — Add Cluster](https://developer.harness.io/docs/continuous-delivery/gitops/get-started/harness-cd-git-ops-quickstart#step-3-add-a-harness-gitops-cluster)
+---
+
+## Step 7: Create Secrets in Harness (Built-in Secret Manager)
+
+1. Go to **Project Settings → Secrets → + New Secret → Text**
+2. Secret Manager: **Harness Built-in Secret Manager** (default)
+3. Create these secrets:
+
+| Secret ID | Value |
+|-----------|-------|
+| `shop_app_key` | `base64:xxxxxxx` (run `php artisan key:generate --show`) |
+| `shop_db_username` | `shop_user` |
+| `shop_db_password` | (strong password) |
+| `shop_stripe_key` | `pk_test_xxxxx` |
+| `shop_stripe_secret` | `sk_test_xxxxx` |
+| `shop_mail_host` | `smtp.gmail.com` or SES endpoint |
+| `shop_mail_username` | (email) |
+| `shop_mail_password` | (app password) |
+| `slack_webhook_url` | `https://hooks.slack.com/services/xxx/xxx/xxx` |
+
+---
+
+## Step 8: Create GitOps Application
+
+1. Go to **Harness → GitOps → Applications**
+2. Click **+ New Application**
+3. **Overview:**
+   - **Application Name:** `shop-ecommerce`
+   - **GitOps Operator:** Argo
+   - **GitOps Agent:** `gitopsagent` (green, PROJECT)
+   - **Source Namespace:** `gitops`
+   - **Service:** Select `shop-ecommerce` (created in Step 5)
+   - **Environment:** Select `production` (created in Step 6)
+   - Click **Continue**
+4. **Sync Policy:** Manual → Click **Continue**
+5. **Source:**
+   - Repository: Select from Step 4
+   - Path: `Episode-09/shop ecommerce app/k8s/`
+   - Target Revision: `master`
+6. **Destination:**
+   - Cluster: `https://kubernetes.default.svc` (in-cluster)
+   - Namespace: `shop-ecommerce`
+7. Click **Finish**
 
 ---
 
@@ -466,14 +474,14 @@ aws ecr delete-repository --repository-name shop-ecommerce --region us-east-1 --
 ```
 Step 1:  Create EKS Cluster
 Step 2:  SSH + Install K8s Delegate
-Step 3:  Install GitOps Agent (ArgoCD)
-Step 4:  Install Observability (pipeline — uses ArgoCD from Step 3)
-Step 5:  Create GitOps Repository
-Step 6:  Create GitOps Application (uses agent from Step 3, repo from Step 5)
-Step 7:  Create Secrets
-Step 8:  Create Service (GitOps)
-Step 9:  Create Environment + GitOps Cluster (uses agent from Step 3)
-Step 10: Configure Slack
+Step 3:  Install GitOps Agent
+Step 4:  Create GitOps Repository
+Step 5:  Create GitOps Application
+Step 6:  Create Secrets
+Step 7:  Create Service (GitOps)
+Step 8:  Create Environment + GitOps Cluster
+Step 9:  Configure Slack
+Step 10: Install Observability Stack (pipeline — ArgoCD App-of-Apps)
 Step 11: Import App Pipeline
 Step 12: Run Pipeline
 Step 13: Test Self-Heal
