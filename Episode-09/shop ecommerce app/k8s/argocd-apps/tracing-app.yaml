@@ -14,6 +14,8 @@ spec:
     repoURL: https://github.com/YOUR-USERNAME/Harness-CI-CD-Zero-to-Hero.git
     targetRevision: master
     path: "Episode-09/shop ecommerce app/k8s/tracing"
+    directory:
+      recurse: true
   destination:
     server: https://kubernetes.default.svc
     namespace: tracing
