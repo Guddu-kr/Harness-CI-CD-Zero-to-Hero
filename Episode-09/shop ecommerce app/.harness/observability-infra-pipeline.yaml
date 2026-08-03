@@ -50,11 +50,8 @@ pipeline:
                       ARGOCD_PROJECT=$(kubectl get appproject -n gitops -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "default")
                       echo "ArgoCD Project: $ARGOCD_PROJECT"
 
-                      # If no project exists, create default
-                      if [ "$ARGOCD_PROJECT" = "" ]; then
-                        kubectl apply -f "Episode-09/shop ecommerce app/k8s/argocd-apps/appproject-default.yaml"
-                        ARGOCD_PROJECT="default"
-                      fi
+                      # Always ensure default project exists (idempotent)
+                      kubectl apply -f "Episode-09/shop ecommerce app/k8s/argocd-apps/appproject-default.yaml" 2>/dev/null || true
 
                       cp "Episode-09/shop ecommerce app/k8s/argocd-apps/"*-app.yaml /tmp/
 
@@ -80,6 +77,10 @@ pipeline:
                       sed -i "s|targetRevision: master|targetRevision: $BRANCH|g" tracing-app.yaml
 
                       cat monitoring-app.yaml
+
+                      # Delete old apps if they exist (clears cached errors)
+                      kubectl delete application monitoring logging tracing -n gitops 2>/dev/null || true
+                      sleep 5
 
                       kubectl apply -f monitoring-app.yaml
                       kubectl apply -f logging-app.yaml
