@@ -1,14 +1,65 @@
-# Gives the delegate service account permission to apply ArgoCD Applications
-# Run once on Bastion: kubectl apply -f delegate-rbac.yaml
+# Production RBAC for Harness Delegate (least privilege — not cluster-admin)
+# Gives delegate only the permissions it needs for CI builds + ArgoCD
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: harness-delegate-role
+rules:
+  # Pods, services, namespaces (kubectl wait, get svc, get pods)
+  - apiGroups: [""]
+    resources:
+      [
+        "pods",
+        "services",
+        "namespaces",
+        "secrets",
+        "configmaps",
+        "persistentvolumeclaims",
+        "serviceaccounts",
+      ]
+    verbs: ["get", "list", "watch", "create", "update", "delete", "patch"]
+  # Deployments, StatefulSets, DaemonSets
+  - apiGroups: ["apps"]
+    resources: ["deployments", "statefulsets", "daemonsets", "replicasets"]
+    verbs: ["get", "list", "watch", "create", "update", "delete", "patch"]
+  # ArgoCD Applications
+  - apiGroups: ["argoproj.io"]
+    resources: ["applications", "applicationsets", "appprojects"]
+    verbs: ["get", "list", "watch", "create", "update", "delete", "patch"]
+  # RBAC (for applying roles/bindings)
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["clusterroles", "clusterrolebindings", "roles", "rolebindings"]
+    verbs: ["get", "list", "watch", "create", "update", "delete", "patch"]
+  # Storage (StorageClass)
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["storageclasses"]
+    verbs: ["get", "list", "watch", "create"]
+  # Batch jobs (init-kibana-user)
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["get", "list", "watch", "create", "delete"]
+  # Monitoring CRDs (ServiceMonitor, PrometheusRule)
+  - apiGroups: ["monitoring.coreos.com"]
+    resources: ["servicemonitors", "prometheusrules"]
+    verbs: ["get", "list", "watch", "create", "update", "delete"]
+  # Events (for kubectl wait)
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["get", "list", "watch"]
+  # Nodes (for node-exporter)
+  - apiGroups: [""]
+    resources: ["nodes", "nodes/proxy", "nodes/metrics"]
+    verbs: ["get", "list", "watch"]
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: harness-delegate-cluster-admin
+  name: harness-delegate-binding
 subjects:
   - kind: ServiceAccount
     name: default
     namespace: harness-delegate-ng
 roleRef:
   kind: ClusterRole
-  name: cluster-admin
+  name: harness-delegate-role
   apiGroup: rbac.authorization.k8s.io

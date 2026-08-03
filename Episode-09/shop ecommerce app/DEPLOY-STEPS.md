@@ -115,6 +115,62 @@ kubectl get pods -n harness-delegate-ng
 
 Wait 2 min → Harness UI → **Connected** ✅
 
+- when you use **KubernetesDirect** for CI, Harness runs pipeline steps as pods using the `default` service account in `harness-delegate-ng` namespace. 
+
+- By default, that service account has **zero permissions** — it can only run inside its own namespace. But our pipeline needs to:
+
+- `kubectl apply` ArgoCD Applications in `gitops` namespace
+- `kubectl get svc` in `monitoring`, `logging`, `tracing` namespaces
+- `kubectl wait` for pods in other namespaces
+
+Without `cluster-admin`, every `kubectl` command across namespaces fails with "Forbidden".
+
+
+**Grant delegate permissions (one-time — production least-privilege, not cluster-admin):**
+```bash
+cat <<'EOF' | kubectl apply -f -
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: harness-delegate-role
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "services", "namespaces", "secrets", "configmaps", "persistentvolumeclaims", "serviceaccounts", "events", "nodes", "nodes/proxy", "nodes/metrics"]
+    verbs: ["get", "list", "watch", "create", "update", "delete", "patch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "statefulsets", "daemonsets", "replicasets"]
+    verbs: ["get", "list", "watch", "create", "update", "delete", "patch"]
+  - apiGroups: ["argoproj.io"]
+    resources: ["applications", "applicationsets", "appprojects"]
+    verbs: ["get", "list", "watch", "create", "update", "delete", "patch"]
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["clusterroles", "clusterrolebindings", "roles", "rolebindings"]
+    verbs: ["get", "list", "watch", "create", "update", "delete", "patch"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["storageclasses"]
+    verbs: ["get", "list", "watch", "create"]
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["get", "list", "watch", "create", "delete"]
+  - apiGroups: ["monitoring.coreos.com"]
+    resources: ["servicemonitors", "prometheusrules"]
+    verbs: ["get", "list", "watch", "create", "update", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: harness-delegate-binding
+subjects:
+  - kind: ServiceAccount
+    name: default
+    namespace: harness-delegate-ng
+roleRef:
+  kind: ClusterRole
+  name: harness-delegate-role
+  apiGroup: rbac.authorization.k8s.io
+EOF
+```
+
 ---
 
 ## Step 3: Create K8s Connector (k8sdelegate)
