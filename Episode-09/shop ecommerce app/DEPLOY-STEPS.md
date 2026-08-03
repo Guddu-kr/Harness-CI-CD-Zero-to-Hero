@@ -64,13 +64,13 @@ Source: [harness-community/Gitops-Samples](https://github.com/harness-community/
 |------|---------|------|
 | GitHub connector (`account.Github`) | 1 | [Episode 1 — Step 3](../../Episode-01/hello-world-app/DEPLOY-STEPS.md#step-3-create-a-github-connector-first-time-only) |
 | Docker Hub connector (`dockerhub`) | 2 | [Episode 2 — Prerequisites](../../Episode-02/python-project/DEPLOY-STEPS.md#prerequisites) |
-
-> **Important:** Episode 9 uses `KubernetesDirect` (not Harness Cloud). This means every `Run` step needs `connectorRef: dockerhub` to pull container images. Harness Cloud (Episodes 1-8) pulled images internally without a connector. On KubernetesDirect, YOUR cluster pulls the image — so it needs a registry connector.
 | AWS OIDC connector (`account.aws_account`) | 3 | [Episode 3 — Connector 3](../../Episode-03/README.md#connector-3-aws--create-now) |
 | Secret: `aws_access_key_id` | 3 | [Episode 3 — Step 2](../../Episode-03/terraform-project/README.md#step-2-get-aws-access-key--secret-key) |
 | Secret: `aws_secret_access_key` | 3 | [Episode 3 — Step 3](../../Episode-03/terraform-project/README.md#step-3-add-secrets-in-harness) |
 | Variable: `aws_account_id` | 4 | [Episode 4 — Step 1](../../Episode-04/README.md#step-1-add-variable-aws_account_id-in-harness) |
 | Variable: `aws_region` | 3 | [Episode 3 — Step 4](../../Episode-03/terraform-project/README.md#step-4-add-variables-in-harness) |
+
+> **Important:** Episode 9 uses `KubernetesDirect` (not Harness Cloud). This means every `Run` step needs `connectorRef: dockerhub` to pull container images. Harness Cloud (Episodes 1-8) pulled images internally without a connector. On KubernetesDirect, YOUR cluster pulls the image — so it needs a registry connector.
 
 ---
 
