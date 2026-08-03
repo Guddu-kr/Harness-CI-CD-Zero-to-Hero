@@ -3,27 +3,18 @@
 # ============================================
 # Stage 1: Build Laravel image → Push to ECR
 # Stage 2: GitOps Deploy → PR → Approve → Merge → ArgoCD Sync → Verify
-#
-# MNC Pattern: App pipeline is FAST — only build + deploy.
-# Observability is already running (installed by observability-infra-pipeline.yaml)
-#
-# PREREQUISITES:
-#   - observability-infra-pipeline.yaml ran successfully (monitoring/logging/tracing ready)
-#   - Prometheus + Elasticsearch connectors created in Harness
-#   - GitOps Agent + Application configured
-#   - Service: shopecommerce, Environment: production
 # ============================================
 pipeline:
   name: episode9-shop-ecommerce-gitops
   identifier: episode9_shop_ecommerce_gitops
-  projectIdentifier: HarnessCICDZerotoHero
-  orgIdentifier: default
+  projectIdentifier: HarnessCICDZerotoHero # ← CHANGE: your project ID
+  orgIdentifier: default # ← CHANGE: your org
   tags: {}
   properties:
     ci:
       codebase:
-        connectorRef: account.Github
-        repoName: Harness-CI-CD-Zero-to-Hero
+        connectorRef: account.Github # ← CHANGE: your GitHub connector
+        repoName: Harness-CI-CD-Zero-to-Hero # ← CHANGE: your repo name
         build: <+input>
   stages:
     # ============================================
@@ -39,10 +30,11 @@ pipeline:
           infrastructure:
             type: KubernetesDirect
             spec:
-              connectorRef: account.k8sdelegate
+              connectorRef: account.k8sdelegate # ← CHANGE: your K8s connector
               namespace: harness-delegate-ng
               automountServiceAccountToken: true
               os: Linux
+          # NOTE: KubernetesDirect needs connectorRef on every Run step (unlike Harness Cloud)
           execution:
             steps:
               - step:
@@ -50,6 +42,7 @@ pipeline:
                   name: Create ECR Repo
                   identifier: create_ecr
                   spec:
+                    connectorRef: dockerhub # ← CHANGE: your Docker Hub connector (for pulling image)
                     shell: Sh
                     image: amazon/aws-cli:latest
                     envVariables:
@@ -64,7 +57,7 @@ pipeline:
                   name: Build and Push to ECR
                   identifier: build_push_ecr
                   spec:
-                    connectorRef: account.aws_account
+                    connectorRef: account.aws_account # ← CHANGE: your AWS OIDC connector
                     region: <+variable.aws_region>
                     account: <+variable.aws_account_id>
                     imageName: shop-ecommerce
@@ -86,28 +79,27 @@ pipeline:
           deploymentType: Kubernetes
           gitOpsEnabled: true
           service:
-            serviceRef: shopecommerce
+            serviceRef: shopecommerce # ← CHANGE: your service ID
             serviceInputs:
               serviceDefinition:
                 type: Kubernetes
                 spec:
                   artifacts:
                     primary:
-                      primaryArtifactRef: ecr_image
+                      primaryArtifactRef: ecr_image # ← CHANGE: must match artifact ID in your Service
                       sources:
                         - identifier: ecr_image
                           type: Ecr
                           spec:
                             tag: v<+pipeline.sequenceId>
           environment:
-            environmentRef: production
+            environmentRef: production # ← CHANGE: your environment ID
             deployToAll: false
             gitOpsClusters:
-              - identifier: shopcluster
-                agentIdentifier: gitopsagent
+              - identifier: shopcluster # ← CHANGE: your GitOps cluster ID
+                agentIdentifier: gitopsagent # ← CHANGE: your GitOps agent ID
           execution:
             steps:
-              # Updates "image" in values.yaml → creates PR
               - step:
                   type: GitOpsUpdateReleaseRepo
                   name: Update Release Repo
@@ -120,7 +112,6 @@ pipeline:
                         value: <+variable.aws_account_id>.dkr.ecr.<+variable.aws_region>.amazonaws.com/shop-ecommerce:v<+pipeline.sequenceId>
                     prTitle: "Deploy shop-ecommerce build #<+pipeline.sequenceId>"
 
-              # Human approval before merge
               - step:
                   type: HarnessApproval
                   name: Approve Deployment
@@ -137,7 +128,6 @@ pipeline:
                       disallowPipelineExecutor: false
                     approverInputs: []
 
-              # Merge PR into main
               - step:
                   type: MergePR
                   name: Merge PR
@@ -147,7 +137,6 @@ pipeline:
                     deleteSourceBranch: true
                     variables: []
 
-              # Trigger ArgoCD sync
               - step:
                   type: GitOpsSync
                   name: Sync Application
@@ -159,8 +148,8 @@ pipeline:
                     applyOnly: false
                     forceApply: false
                     applicationsList:
-                      - applicationName: shop-ecommerce
-                        agentId: gitopsagent
+                      - applicationName: shop-ecommerce # ← CHANGE: your GitOps app name
+                        agentId: gitopsagent # ← CHANGE: your agent ID
                     retryStrategy: {}
                     retry: false
                     syncOptions:
@@ -171,7 +160,6 @@ pipeline:
                       replaceResources: false
                       prunePropagationPolicy: foreground
 
-              # Verify with Prometheus (auto-rollback if degraded)
               - step:
                   type: Verify
                   name: Verify Deployment Health
@@ -187,7 +175,6 @@ pipeline:
                       duration: 10m
                       deploymentTag: v<+pipeline.sequenceId>
 
-            # Rollback: sync to previous revision
             rollbackSteps:
               - step:
                   type: GitOpsSync
@@ -200,8 +187,8 @@ pipeline:
                     applyOnly: false
                     forceApply: false
                     applicationsList:
-                      - applicationName: shop-ecommerce
-                        agentId: gitopsagent
+                      - applicationName: shop-ecommerce # ← CHANGE: your GitOps app name
+                        agentId: gitopsagent # ← CHANGE: your agent ID
                     retryStrategy: {}
                     retry: false
                     syncOptions:
