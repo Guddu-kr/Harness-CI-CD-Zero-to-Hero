@@ -240,7 +240,23 @@ helm install argocd gitops-agent/gitops-helm --values override.yaml --namespace 
 
 ---
 
-## Step 8: Create Secrets in Harness (Built-in Secret Manager)
+## Step 8: Configure Slack Notifications
+
+1. Open: **https://api.slack.com/apps**
+2. Click **Create New App** → **From scratch**
+3. App Name: `Harness Notifications`, Workspace: select yours → **Create App**
+4. Left sidebar → **Incoming Webhooks** → Toggle **ON**
+5. Click **Add New Webhook to Workspace**
+6. Select channel (e.g., `#deployments`) → **Allow**
+7. Copy the **Webhook URL** (starts with `https://hooks.slack.com/services/...`)
+8. In Harness → **Project Settings → Secrets → + New Secret → Text**
+   - Secret ID: `slack_webhook_url`
+   - Value: paste the webhook URL
+   - Click **Save**
+
+---
+
+## Step 9: Create Secrets in Harness (Built-in Secret Manager)
 
 1. Go to **Project Settings → Secrets → + New Secret → Text**
 2. Secret Manager: **Harness Built-in Secret Manager** (default)
@@ -248,19 +264,19 @@ helm install argocd gitops-agent/gitops-helm --values override.yaml --namespace 
 
 | Secret ID | Value |
 |-----------|-------|
-| `shop_app_key` | `base64:xxxxxxx` (run `php artisan key:generate --show`) |
-| `shop_db_username` | `shop_user` |
-| `shop_db_password` | (strong password) |
-| `shop_stripe_key` | `pk_test_xxxxx` |
-| `shop_stripe_secret` | `sk_test_xxxxx` |
-| `shop_mail_host` | `smtp.gmail.com` or SES endpoint |
-| `shop_mail_username` | (email) |
-| `shop_mail_password` | (app password) |
-| `slack_webhook_url` | `https://hooks.slack.com/services/xxx/xxx/xxx` |
+| `shop_app_key` | `base64:dGhpc2lzYWR1bW15a2V5Zm9ydGVzdGluZzEyMw==` |
+| `shop_db_username` | `shop_admin` |
+| `shop_db_password` | `ShopDB@2026secure` |
+| `shop_stripe_key` | `pk_test_DUMMY_KEY_REPLACE_WITH_YOURS` |
+| `shop_stripe_secret` | `sk_test_DUMMY_SECRET_REPLACE_WITH_YOURS` |
+| `shop_mail_host` | `smtp.gmail.com` |
+| `shop_mail_username` | `shopecommerce.notify@gmail.com` |
+| `shop_mail_password` | `abcd efgh ijkl mnop` |
+| `slack_webhook_url` | (from Step 8) |
 
 ---
 
-## Step 9: Create GitOps Application
+## Step 10: Create GitOps Application
 
 1. Go to **Harness → GitOps → Applications**
 2. Click **+ New Application**
@@ -281,19 +297,6 @@ helm install argocd gitops-agent/gitops-helm --values override.yaml --namespace 
    - Cluster: `https://kubernetes.default.svc` (in-cluster)
    - Namespace: `shop-ecommerce`
 7. Click **Finish**
-
----
-
-## Step 10: Configure Slack Notifications
-
-1. Create a Slack Incoming Webhook:
-   - Go to your Slack workspace → Apps → Incoming Webhooks → Add
-   - Choose channel (e.g., `#deployments`)
-   - Copy the webhook URL
-
-2. Add webhook URL as secret in Harness:
-   - Secret ID: `slack_webhook_url`
-   - Value: `https://hooks.slack.com/services/xxx/xxx/xxx`
 
 ---
 
