@@ -49,20 +49,22 @@ pipeline:
                       cp "Episode-09/shop ecommerce app/k8s/argocd-apps/"*.yaml /tmp/
 
                       BRANCH="<+codebase.branch>"
-                      REPO_URL="https://github.com/<+pipeline.properties.ci.codebase.repoName>"
+                      REPO_URL="<+codebase.repoUrl>"
 
                       echo "=== Deploying ArgoCD Applications (App-of-Apps) ==="
                       echo "Repo: $REPO_URL"
                       echo "Branch: $BRANCH"
 
                       cd /tmp
-                      sed -i "s|https://github.com/YOUR-USERNAME/Harness-CI-CD-Zero-to-Hero.git|${REPO_URL}.git|g" monitoring-app.yaml
-                      sed -i "s|https://github.com/YOUR-USERNAME/Harness-CI-CD-Zero-to-Hero.git|${REPO_URL}.git|g" logging-app.yaml
-                      sed -i "s|https://github.com/YOUR-USERNAME/Harness-CI-CD-Zero-to-Hero.git|${REPO_URL}.git|g" tracing-app.yaml
+                      sed -i "s|https://github.com/YOUR-USERNAME/Harness-CI-CD-Zero-to-Hero.git|${REPO_URL}|g" monitoring-app.yaml
+                      sed -i "s|https://github.com/YOUR-USERNAME/Harness-CI-CD-Zero-to-Hero.git|${REPO_URL}|g" logging-app.yaml
+                      sed -i "s|https://github.com/YOUR-USERNAME/Harness-CI-CD-Zero-to-Hero.git|${REPO_URL}|g" tracing-app.yaml
 
                       sed -i "s|targetRevision: master|targetRevision: $BRANCH|g" monitoring-app.yaml
                       sed -i "s|targetRevision: master|targetRevision: $BRANCH|g" logging-app.yaml
                       sed -i "s|targetRevision: master|targetRevision: $BRANCH|g" tracing-app.yaml
+
+                      cat monitoring-app.yaml
 
                       kubectl apply -f monitoring-app.yaml
                       kubectl apply -f logging-app.yaml

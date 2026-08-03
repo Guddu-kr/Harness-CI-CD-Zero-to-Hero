@@ -1,0 +1,14 @@
+# Gives the delegate service account permission to apply ArgoCD Applications
+# Run once on Bastion: kubectl apply -f delegate-rbac.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: harness-delegate-cluster-admin
+subjects:
+  - kind: ServiceAccount
+    name: default
+    namespace: harness-delegate-ng
+roleRef:
+  kind: ClusterRole
+  name: cluster-admin
+  apiGroup: rbac.authorization.k8s.io
