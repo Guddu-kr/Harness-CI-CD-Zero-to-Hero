@@ -1,0 +1,142 @@
+# ============================================
+# PIPELINE 1: Observability Infrastructure (Run ONCE)
+# ============================================
+# Deploys ArgoCD App-of-Apps — ArgoCD then manages all observability.
+# After this runs, ArgoCD auto-syncs monitoring/logging/tracing from Git.
+# Any future changes to manifests → just push to Git → ArgoCD syncs.
+#
+# This is how MNCs do it:
+#   - ArgoCD manages observability (not kubectl, not Helm CLI)
+#   - Git = source of truth for infrastructure too
+#   - Self-heal: if someone deletes Prometheus pod, ArgoCD recreates it
+# ============================================
+pipeline:
+  name: episode9-observability-infra
+  identifier: episode9_observability_infra
+  projectIdentifier: HarnessCICDZerotoHero
+  orgIdentifier: default
+  tags: {}
+  properties:
+    ci:
+      codebase:
+        connectorRef: account.Github
+        repoName: Harness-CI-CD-Zero-to-Hero
+        build: <+input>
+  stages:
+    # ============================================
+    # STAGE 1: Deploy ArgoCD Applications (App-of-Apps pattern)
+    # ArgoCD then takes over and syncs all 3 stacks from Git
+    # ============================================
+    - stage:
+        name: deploy-argocd-apps
+        identifier: deploy_argocd_apps
+        description: "Apply ArgoCD Applications — ArgoCD syncs observability from Git"
+        type: CI
+        spec:
+          cloneCodebase: true
+          infrastructure:
+            type: KubernetesDirect
+            spec:
+              connectorRef: account.k8sdelegate
+              namespace: harness-delegate-ng
+              automountServiceAccountToken: true
+              os: Linux
+          execution:
+            steps:
+              # Apply 3 ArgoCD Application manifests — ArgoCD does the rest
+              - step:
+                  type: Run
+                  name: Deploy ArgoCD Apps
+                  identifier: deploy_argocd_apps_step
+                  spec:
+                    shell: Sh
+                    image: bitnami/kubectl:latest
+                    command: |-
+                      cd "Episode-09/shop ecommerce app/k8s/argocd-apps"
+
+                      # Build repo URL from pipeline codebase config
+                      # connectorRef gives GitHub account, repoName gives the repo
+                      REPO_NAME="<+pipeline.properties.ci.codebase.repoName>"
+                      BRANCH="<+codebase.branch>"
+
+                      # Get GitHub URL from git remote (most reliable)
+                      REPO_URL=$(git remote get-url origin | sed 's/\.git$//')
+
+                      echo "=== Deploying ArgoCD Applications (App-of-Apps) ==="
+                      echo "Repo: $REPO_URL"
+                      echo "Branch: $BRANCH"
+
+                      # Replace placeholder repo URL with actual
+                      sed -i "s|https://github.com/YOUR-USERNAME/Harness-CI-CD-Zero-to-Hero.git|${REPO_URL}.git|g" monitoring-app.yaml
+                      sed -i "s|https://github.com/YOUR-USERNAME/Harness-CI-CD-Zero-to-Hero.git|${REPO_URL}.git|g" logging-app.yaml
+                      sed -i "s|https://github.com/YOUR-USERNAME/Harness-CI-CD-Zero-to-Hero.git|${REPO_URL}.git|g" tracing-app.yaml
+
+                      # Replace placeholder branch with actual
+                      sed -i "s|targetRevision: master|targetRevision: $BRANCH|g" monitoring-app.yaml
+                      sed -i "s|targetRevision: master|targetRevision: $BRANCH|g" logging-app.yaml
+                      sed -i "s|targetRevision: master|targetRevision: $BRANCH|g" tracing-app.yaml
+
+                      kubectl apply -f monitoring-app.yaml
+                      kubectl apply -f logging-app.yaml
+                      kubectl apply -f tracing-app.yaml
+
+                      echo ""
+                      echo "ArgoCD will now auto-sync:"
+                      echo "  - monitoring/ → Prometheus + Grafana"
+                      echo "  - logging/    → Elasticsearch + Fluentd + Kibana"
+                      echo "  - tracing/    → OTel Collector + Jaeger"
+                      echo ""
+                      echo "=== ArgoCD Apps Created ==="
+
+              # Wait for ArgoCD to sync and pods to be ready
+              - step:
+                  type: Run
+                  name: Wait for Sync
+                  identifier: wait_for_sync
+                  spec:
+                    shell: Sh
+                    image: bitnami/kubectl:latest
+                    command: |-
+                      echo "=== Waiting for ArgoCD to sync (3-5 min) ==="
+
+                      echo "Waiting for Grafana..."
+                      kubectl wait --for=condition=ready pod -l app=grafana -n monitoring --timeout=300s 2>/dev/null || echo "Grafana still syncing..."
+
+                      echo "Waiting for Elasticsearch..."
+                      kubectl wait --for=condition=ready pod -l app=elasticsearch -n logging --timeout=300s 2>/dev/null || echo "ES still syncing..."
+
+                      echo "Waiting for Jaeger..."
+                      kubectl wait --for=condition=ready pod -l app=jaeger -n tracing --timeout=300s 2>/dev/null || echo "Jaeger still syncing..."
+
+                      echo "=== Sync Complete ==="
+
+              # Print all LoadBalancer URLs
+              - step:
+                  type: Run
+                  name: Get All URLs
+                  identifier: get_all_urls
+                  spec:
+                    shell: Sh
+                    image: bitnami/kubectl:latest
+                    command: |-
+                      sleep 30
+
+                      GRAFANA=$(kubectl get svc grafana -n monitoring -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "pending")
+                      KIBANA=$(kubectl get svc kibana -n logging -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "pending")
+                      JAEGER=$(kubectl get svc jaeger-query -n tracing -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "pending")
+
+                      echo "=============================================="
+                      echo "  OBSERVABILITY STACK READY (ArgoCD managed)"
+                      echo "=============================================="
+                      echo ""
+                      echo "  1. GRAFANA:  http://$GRAFANA"
+                      echo "     Login:    admin / admin123"
+                      echo ""
+                      echo "  2. KIBANA:   http://$KIBANA"
+                      echo "     Login:    elastic / HarnessEFK@2026"
+                      echo ""
+                      echo "  3. JAEGER:   http://$JAEGER"
+                      echo ""
+                      echo "  All managed by ArgoCD — changes in Git auto-sync."
+                      echo "  Self-heal enabled — deleted pods auto-recreate."
+                      echo "=============================================="

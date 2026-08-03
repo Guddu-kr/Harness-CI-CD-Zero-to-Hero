@@ -68,41 +68,53 @@ Source: [harness-community/Gitops-Samples](https://github.com/harness-community/
 | Secret: `aws_secret_access_key` | 3 | [Episode 3 — Step 3](../../Episode-03/terraform-project/README.md#step-3-add-secrets-in-harness) |
 | Variable: `aws_account_id` | 4 | [Episode 4 — Step 1](../../Episode-04/README.md#step-1-add-variable-aws_account_id-in-harness) |
 | Variable: `aws_region` | 3 | [Episode 3 — Step 4](../../Episode-03/terraform-project/README.md#step-4-add-variables-in-harness) |
-| EKS cluster running | 6 | GitHub → Actions → "EKS Terraform" → `action: apply` |
-| K8s Delegate installed | 6 | [Episode 6 — Step 3](../../Episode-06/gocart/DEPLOY-STEPS.md#step-3-install-kubernetes-delegate) |
 
 ---
 
-## Step 1: Install Prometheus + Grafana on EKS
+## Step 1: Create EKS Cluster
 
-SSH into your Bastion host and run:
+1. GitHub → Actions → **"EKS Terraform"** → Run workflow → `action: apply`
+2. Wait ~12 minutes
+3. Output: Bastion IP + Cluster name
+
+---
+
+## Step 2: SSH into Bastion + Install K8s Delegate
 
 ```bash
-helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+aws ssm start-session --target INSTANCE-ID --region us-east-1
+
+aws eks update-kubeconfig --region us-east-1 --name harness-eks-cluster
+kubectl get nodes
+```
+
+Install delegate:
+1. Harness UI → Project Settings → **Delegates** → **+ New Delegate** → **Helm Chart**
+2. Name: `eks-k8s-delegate`
+3. On Bastion, run:
+
+```bash
+helm repo add harness-delegate https://app.harness.io/storage/harness-download/delegate-helm-chart/
 helm repo update
 
-helm install prometheus prometheus-community/kube-prometheus-stack \
-  --namespace monitoring \
-  --create-namespace \
-  --set grafana.adminPassword=admin123 \
-  --set prometheus.prometheusSpec.serviceMonitorSelectorNilUsesHelmValues=false
+helm upgrade -i eks-k8s-delegate harness-delegate/harness-delegate-ng \
+  --namespace harness-delegate-ng --create-namespace \
+  --set delegateName=eks-k8s-delegate \
+  --set accountId=YOUR_ACCOUNT_ID \
+  --set delegateToken=YOUR_TOKEN \
+  --set managerEndpoint=https://app.harness.io \
+  --set delegateDockerImage=harness/delegate:latest \
+  --set replicas=1 \
+  --set upgrader.enabled=true
+
+kubectl get pods -n harness-delegate-ng
 ```
 
-Verify:
-```bash
-kubectl get pods -n monitoring
-```
-
-Access Grafana (from Bastion):
-```bash
-kubectl port-forward svc/prometheus-grafana 3000:80 -n monitoring
-# Open: http://localhost:3000
-# Login: admin / admin123
-```
+Wait 2 min → Harness UI → **Connected** ✅
 
 ---
 
-## Step 2: Install Harness GitOps Agent
+## Step 3: Install Harness GitOps Agent
 
 1. Go to **Harness → GitOps → Settings → GitOps Agents**
 2. Click **+ New GitOps Agent**
@@ -119,7 +131,36 @@ kubectl apply -f gitops-agent.yaml -n gitops
 
 ---
 
-## Step 3: Create GitOps Repository
+## Step 4: Install Observability Stack (Prometheus + Grafana + EFK + Jaeger)
+
+> **Fully automated!** One pipeline deploys everything via ArgoCD App-of-Apps.
+> No manual `helm install` or `kubectl apply` needed.
+
+1. Go to **Pipelines → + Create Pipeline → Import from Git**
+2. YAML Path: `Episode-09/shop ecommerce app/.harness/observability-infra-pipeline.yaml`
+3. Click **Run Pipeline**
+4. Wait ~5 minutes — ArgoCD syncs all 3 stacks from Git
+5. Pipeline output shows 3 LoadBalancer URLs:
+
+```
+1. GRAFANA:  http://xxx.elb.amazonaws.com     (admin / admin123)
+2. KIBANA:   http://xxx.elb.amazonaws.com     (elastic / HarnessEFK@2026)
+3. JAEGER:   http://xxx.elb.amazonaws.com
+```
+
+> **How it works (ArgoCD App-of-Apps — MNC pattern):**
+> - Pipeline applies 3 ArgoCD Application manifests
+> - ArgoCD watches Git folders (monitoring/, logging/, tracing/)
+> - Auto-syncs all manifests to cluster
+> - Self-heal: if someone deletes a pod, ArgoCD recreates it
+> - Repo URL + branch auto-detected from pipeline codebase (no YAML editing needed)
+>
+> **After this runs once, ArgoCD manages observability forever.**
+> Any change to monitoring/logging/tracing manifests in Git → ArgoCD auto-applies.
+
+---
+
+## Step 5: Create GitOps Repository
 
 1. Go to **Harness → GitOps → Settings → Repositories**
 2. Click **+ New Repository**
@@ -129,17 +170,17 @@ kubectl apply -f gitops-agent.yaml -n gitops
 
 ---
 
-## Step 4: Create GitOps Application
+## Step 6: Create GitOps Application
 
 1. Go to **Harness → GitOps → Applications**
 2. Click **+ New Application**
 3. Configure:
    - **Name:** `shop-ecommerce`
-   - **GitOps Agent:** (select agent from Step 2)
+   - **GitOps Agent:** (select agent from Step 3)
    - **Source:**
-     - Repository: (select from Step 3)
+     - Repository: (select from Step 5)
      - Path: `Episode-09/shop ecommerce app/k8s/`
-     - Target Revision: `main`
+     - Target Revision: `master`
    - **Destination:**
      - Cluster: `https://kubernetes.default.svc` (in-cluster)
      - Namespace: `shop-ecommerce`
@@ -151,12 +192,14 @@ kubectl apply -f gitops-agent.yaml -n gitops
 
 ---
 
-## Step 5: Add Secrets in AWS Secrets Manager
+## Step 7: Create Secrets in Harness (Built-in Secret Manager)
 
-Create these secrets in AWS Secrets Manager (same region as EKS):
+1. Go to **Project Settings → Secrets → + New Secret → Text**
+2. Secret Manager: **Harness Built-in Secret Manager** (default)
+3. Create these secrets:
 
-| Secret Name | Value |
-|-------------|-------|
+| Secret ID | Value |
+|-----------|-------|
 | `shop_app_key` | `base64:xxxxxxx` (run `php artisan key:generate --show`) |
 | `shop_db_username` | `shop_user` |
 | `shop_db_password` | (strong password) |
@@ -165,52 +208,11 @@ Create these secrets in AWS Secrets Manager (same region as EKS):
 | `shop_mail_host` | `smtp.gmail.com` or SES endpoint |
 | `shop_mail_username` | (email) |
 | `shop_mail_password` | (app password) |
+| `slack_webhook_url` | `https://hooks.slack.com/services/xxx/xxx/xxx` |
 
 ---
 
-## Step 6: Add AWS Secrets Manager Connector in Harness
-
-1. Go to **Project Settings → Connectors → + New Connector**
-2. Select **AWS Secrets Manager**
-3. Configure:
-   - **Name:** `aws-secrets-manager`
-   - **Credentials:** AWS OIDC (use existing `account.aws_account`)
-   - **Region:** Same as EKS
-   - **Secret Name Prefix:** (leave empty)
-
----
-
-## Step 7: Create Harness Secrets (referencing AWS SM)
-
-Create these in **Project Settings → Secrets → + New Secret → Text**:
-
-| Harness Secret ID | Source | AWS SM Secret Name |
-|-------------------|--------|-------------------|
-| `shop_app_key` | AWS Secrets Manager | `shop_app_key` |
-| `shop_db_username` | AWS Secrets Manager | `shop_db_username` |
-| `shop_db_password` | AWS Secrets Manager | `shop_db_password` |
-| `shop_stripe_key` | AWS Secrets Manager | `shop_stripe_key` |
-| `shop_stripe_secret` | AWS Secrets Manager | `shop_stripe_secret` |
-| `shop_mail_host` | AWS Secrets Manager | `shop_mail_host` |
-| `shop_mail_username` | AWS Secrets Manager | `shop_mail_username` |
-| `shop_mail_password` | AWS Secrets Manager | `shop_mail_password` |
-| `slack_webhook_url` | AWS Secrets Manager | `slack_webhook_url` |
-| `github_pat` | AWS Secrets Manager | `github_pat` |
-
----
-
-## Step 8: Create ECR Repository
-
-```bash
-aws ecr create-repository \
-  --repository-name shop-ecommerce \
-  --region us-east-1 \
-  --image-scanning-configuration scanOnPush=true
-```
-
----
-
-## Step 9: Create Harness Service (GitOps)
+## Step 8: Create Harness Service (GitOps)
 
 > **Important:** For GitOps, the Service uses a **Release Repo Manifest** (not K8s Manifest). This tells the `GitOpsUpdateReleaseRepo` step which file to update.
 
@@ -239,7 +241,7 @@ Source: [Harness GitOps Service docs](https://developer.harness.io/docs/continuo
 
 ---
 
-## Step 10: Create Harness Environment + GitOps Cluster
+## Step 9: Create Harness Environment + GitOps Cluster
 
 **Environment:**
 1. Go to **Project Settings → Environments → + New Environment**
@@ -250,7 +252,7 @@ Source: [Harness GitOps Service docs](https://developer.harness.io/docs/continuo
 1. Open the `production` environment
 2. Go to **GitOps Clusters** tab
 3. Click **+ Select Cluster(s)**
-4. Select the GitOps cluster from the agent installed in Step 2
+4. Select the GitOps cluster from the agent installed in Step 3
    - Identifier: `shopcluster`
    - Agent: `gitopsagent`
 
@@ -260,7 +262,7 @@ Source: [Harness GitOps Quickstart — Add Cluster](https://developer.harness.io
 
 ---
 
-## Step 11: Configure Slack Notifications
+## Step 10: Configure Slack Notifications
 
 1. Create a Slack Incoming Webhook:
    - Go to your Slack workspace → Apps → Incoming Webhooks → Add
@@ -273,7 +275,7 @@ Source: [Harness GitOps Quickstart — Add Cluster](https://developer.harness.io
 
 ---
 
-## Step 12: Import Pipeline from Git
+## Step 11: Import Pipeline from Git
 
 1. Go to **Pipelines → + Create Pipeline**
 2. Select **Import from Git**
@@ -303,7 +305,7 @@ Source: [Harness GitOps pipeline steps](https://developer.harness.io/docs/contin
 
 ---
 
-## Step 13: Run the Pipeline
+## Step 12: Run the Pipeline
 
 1. Click **Run Pipeline**
 2. Select branch: `main`
@@ -348,7 +350,7 @@ If healthy → Pipeline succeeds → Slack notification sent
 
 ---
 
-## Step 14: Test GitOps Self-Heal
+## Step 13: Test GitOps Self-Heal
 
 ```bash
 # Manually delete a pod (simulating drift)
@@ -362,7 +364,7 @@ The GitOps agent detects the drift and reconciles back to the Git-defined state.
 
 ---
 
-## Step 15: Test Rollback
+## Step 14: Test Rollback
 
 ```bash
 # Option 1: Revert Git commit
@@ -376,10 +378,12 @@ git push origin main
 
 ---
 
-## Step 16: Access Grafana Dashboards
+## Step 15: Access Grafana Dashboards
 
 ```bash
-kubectl port-forward svc/prometheus-grafana 3000:80 -n monitoring
+kubectl get svc grafana -n monitoring
+# Open: http://GRAFANA-LOADBALANCER-URL
+# Login: admin / admin123
 ```
 
 Import recommended dashboards:
@@ -389,23 +393,23 @@ Import recommended dashboards:
 
 ---
 
-## Step 17: Cleanup
+## Step 16: Cleanup
 
 ```bash
-# Delete GitOps application in Harness UI (this removes K8s resources)
+# Delete ArgoCD applications (this removes all observability pods)
+kubectl delete application monitoring logging tracing -n gitops
 
-# Delete monitoring stack
-helm uninstall prometheus -n monitoring
-kubectl delete namespace monitoring
+# Delete GitOps application for the app
+# Go to Harness UI → GitOps → Applications → Delete shop-ecommerce
 
-# Delete GitOps agent
-kubectl delete namespace gitops
+# Delete namespaces (if ArgoCD didn't clean them)
+kubectl delete namespace monitoring logging tracing shop-ecommerce
 
 # Delete ECR repository
 aws ecr delete-repository --repository-name shop-ecommerce --region us-east-1 --force
 
-# Destroy EKS cluster (if done for the day)
-# Run infra.yml with destroy
+# Destroy EKS cluster (stop billing!)
+# GitHub → Actions → "EKS Terraform" → destroy
 ```
 
 ---
@@ -437,3 +441,23 @@ aws ecr delete-repository --repository-name shop-ecommerce --region us-east-1 --
 | Alert Rules | PrometheusRule fires on high errors/crashes |
 | Notifications | Slack on pipeline and alert events |
 | Secret Injection | `<+secrets.getValue()>` resolved by GitOps Agent plugin |
+
+
+```
+Step 1:  Create EKS Cluster
+Step 2:  SSH + Install K8s Delegate
+Step 3:  Install GitOps Agent (ArgoCD)
+Step 4:  Install Observability (pipeline — uses ArgoCD from Step 3)
+Step 5:  Create GitOps Repository
+Step 6:  Create GitOps Application (uses agent from Step 3, repo from Step 5)
+Step 7:  Create Secrets
+Step 8:  Create Service (GitOps)
+Step 9:  Create Environment + GitOps Cluster (uses agent from Step 3)
+Step 10: Configure Slack
+Step 11: Import App Pipeline
+Step 12: Run Pipeline
+Step 13: Test Self-Heal
+Step 14: Test Rollback
+Step 15: Access Grafana
+Step 16: Cleanup
+```

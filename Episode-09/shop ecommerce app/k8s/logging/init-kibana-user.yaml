@@ -1,0 +1,43 @@
+# ============================================
+# Sets kibana_system password in Elasticsearch
+# Must run AFTER Elasticsearch is ready
+# ============================================
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: init-kibana-user
+  namespace: logging
+spec:
+  backoffLimit: 5
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: init
+          image: curlimages/curl:latest
+          command:
+            - /bin/sh
+            - -c
+            - |
+              echo "Waiting for Elasticsearch..."
+              until curl -s -u elastic:${ELASTIC_PASSWORD} http://elasticsearch:9200/_cluster/health | grep -q '"status"'; do
+                sleep 5
+              done
+              echo "Setting kibana_system password..."
+              curl -s -X POST -u elastic:${ELASTIC_PASSWORD} \
+                -H "Content-Type: application/json" \
+                http://elasticsearch:9200/_security/user/kibana_system/_password \
+                -d "{\"password\":\"${KIBANA_SYSTEM_PASSWORD}\"}"
+              echo ""
+              echo "Done!"
+          env:
+            - name: ELASTIC_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: elasticsearch-credentials
+                  key: ELASTIC_PASSWORD
+            - name: KIBANA_SYSTEM_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: elasticsearch-credentials
+                  key: KIBANA_SYSTEM_PASSWORD

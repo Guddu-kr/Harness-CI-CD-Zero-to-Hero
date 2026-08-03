@@ -1,0 +1,7 @@
+# Namespace for the monitoring stack (Prometheus, Grafana, Node Exporter, Kube State Metrics)
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring
+  labels:
+    app: monitoring

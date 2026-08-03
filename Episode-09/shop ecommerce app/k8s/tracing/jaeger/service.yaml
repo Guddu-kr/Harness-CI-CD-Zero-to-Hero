@@ -1,0 +1,39 @@
+# Jaeger LoadBalancer service for UI access and collector endpoint
+apiVersion: v1
+kind: Service
+metadata:
+  name: jaeger-query
+  namespace: tracing
+  labels:
+    app: jaeger
+spec:
+  type: LoadBalancer
+  selector:
+    app: jaeger
+  ports:
+    - port: 80
+      targetPort: 16686
+      name: ui
+      protocol: TCP
+    - port: 4317
+      targetPort: 4317
+      name: otlp-collector
+      protocol: TCP
+---
+# Internal ClusterIP service for OTel Collector to send traces to Jaeger
+apiVersion: v1
+kind: Service
+metadata:
+  name: jaeger-collector
+  namespace: tracing
+  labels:
+    app: jaeger
+spec:
+  type: ClusterIP
+  selector:
+    app: jaeger
+  ports:
+    - port: 4317
+      targetPort: 4317
+      name: otlp-collector
+      protocol: TCP

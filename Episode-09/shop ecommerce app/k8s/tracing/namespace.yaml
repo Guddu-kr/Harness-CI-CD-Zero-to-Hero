@@ -1,0 +1,7 @@
+# Namespace for the tracing stack (OpenTelemetry Collector, Jaeger)
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: tracing
+  labels:
+    app: tracing

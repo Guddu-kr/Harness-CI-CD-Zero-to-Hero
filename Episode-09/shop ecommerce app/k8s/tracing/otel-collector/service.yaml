@@ -1,0 +1,21 @@
+# OpenTelemetry Collector ClusterIP service
+apiVersion: v1
+kind: Service
+metadata:
+  name: otel-collector
+  namespace: tracing
+  labels:
+    app: otel-collector
+spec:
+  type: ClusterIP
+  selector:
+    app: otel-collector
+  ports:
+    - port: 4317
+      targetPort: 4317
+      name: otlp-grpc
+      protocol: TCP
+    - port: 4318
+      targetPort: 4318
+      name: otlp-http
+      protocol: TCP

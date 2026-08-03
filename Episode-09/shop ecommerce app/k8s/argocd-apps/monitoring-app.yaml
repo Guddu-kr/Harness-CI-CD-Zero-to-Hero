@@ -1,0 +1,25 @@
+# ArgoCD Application — deploys all monitoring manifests
+# CHANGE: repoURL to YOUR GitHub repo URL
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: monitoring
+  namespace: gitops
+  labels:
+    app.kubernetes.io/part-of: observability
+spec:
+  project: default
+  source:
+    # CHANGE THIS: Your GitHub repo URL
+    repoURL: https://github.com/YOUR-USERNAME/Harness-CI-CD-Zero-to-Hero.git
+    targetRevision: master
+    path: "Episode-09/shop ecommerce app/k8s/monitoring"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
