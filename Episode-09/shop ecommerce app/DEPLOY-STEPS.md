@@ -127,7 +127,8 @@ Wait 2 min → Harness UI → **Connected** ✅
    - **Skip Crds:** unchecked
    - **High Availability:** OFF
 5. Under **Advanced** (scroll down):
-   - **Enable ArgoCD Harness Plugin:** ✅ Check this (required for `<+secrets.getValue()>` resolution)
+   - **Enable Helm Secrets Path Traversal:** ✅ Check (allows accessing secrets in Helm values from different paths)
+   - **Enable ArgoCD Harness Plugin:** ✅ Check (required for `<+secrets.getValue()>` resolution)
    - Leave other Advanced settings empty
 6. **Certificate / Proxy settings:** leave empty → Click **Continue**
 7. **Disaster Recovery:** OFF → Click **Continue**
@@ -141,7 +142,6 @@ kubectl create namespace gitops
 
 10. Wait 2 min → Harness UI shows agent status: **Healthy** ✅
 
-> **Important:** Check "Enable ArgoCD Harness Plugin" — without this, `<+secrets.getValue()>` in values.yaml won't resolve during GitOps sync.
 
 ---
 
