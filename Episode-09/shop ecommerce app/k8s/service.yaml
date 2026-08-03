@@ -1,0 +1,26 @@
+# ============================================
+# SERVICE: Exposes Shop Ecommerce to the internet via LoadBalancer
+# Port mapping: External port 80 → Container port 80
+# Access: http://LOADBALANCER-URL
+# ============================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: shop-ecommerce
+  namespace: shop-ecommerce
+  labels:
+    app: shop-ecommerce
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "80"
+    prometheus.io/path: "/nginx-status"
+spec:
+  type: LoadBalancer
+  selector:
+    app: shop-ecommerce
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+      name: http

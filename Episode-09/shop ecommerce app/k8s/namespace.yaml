@@ -1,0 +1,13 @@
+# ============================================
+# NAMESPACE: Logical isolation for Shop Ecommerce app
+# ============================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: shop-ecommerce
+  labels:
+    app: shop-ecommerce
+    environment: production
+    managed-by: harness-gitops
+    episode: "9"
+    monitoring: enabled

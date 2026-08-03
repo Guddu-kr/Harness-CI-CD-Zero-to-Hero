@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shop-ecommerce
+  namespace: shop-ecommerce
+  labels:
+    app: shop-ecommerce
+    app.kubernetes.io/name: shop-ecommerce
+    app.kubernetes.io/component: web
+spec:
+  replicas: { { int .Values.replicas } }
+  selector:
+    matchLabels:
+      app: shop-ecommerce
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: shop-ecommerce
+        app.kubernetes.io/name: shop-ecommerce
+        app.kubernetes.io/component: web
+    spec:
+      containers:
+        - name: shop-ecommerce
+          image: { { .Values.image } }
+          ports:
+            - containerPort: 80
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: shop-ecommerce-config
+            - secretRef:
+                name: shop-ecommerce-secrets
+          env:
+            - name: DB_HOST
+              value: { { .Values.dbHost } }
+            - name: DB_PORT
+              value: "{{.Values.dbPort}}"
+            - name: DB_DATABASE
+              value: { { .Values.dbDatabase } }
+          resources:
+            requests:
+              cpu: 200m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "nginx -s quit && sleep 5"]
+      terminationGracePeriodSeconds: 30

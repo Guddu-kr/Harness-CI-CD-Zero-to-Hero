@@ -8,6 +8,38 @@ Like having a self-driving car (GitOps) with a full dashboard showing speed, fue
 
 ## 📚 Topics Covered
 
+# Episode 9 — Production Flow
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  CI STAGE (Harness Pipeline)                                     │
+│                                                                   │
+│  Clone → Composer Install → PHPUnit Tests → Docker Build         │
+│  → Push to ECR (OIDC) → Update image tag in k8s/values.yaml     │
+│  → Git commit + push (triggers GitOps sync)                      │
+│                                                                   │
+├─────────────────────────────────────────────────────────────────┤
+│  GITOPS (No CD stage — Agent handles deployment)                 │
+│                                                                   │
+│  GitOps Agent detects new commit → Syncs k8s/ manifests          │
+│  → Rolling update on EKS → Self-heal if drift                   │
+│                                                                   │
+├─────────────────────────────────────────────────────────────────┤
+│  OBSERVABILITY                                                    │
+│                                                                   │
+│  Prometheus scrapes /metrics → Grafana dashboards                │
+│  EFK collects logs → Kibana queries                              │
+│  Harness Verify step compares pre/post deploy metrics            │
+│  → Auto-rollback if degradation detected                         │
+│                                                                   │
+├─────────────────────────────────────────────────────────────────┤
+│  NOTIFICATIONS                                                    │
+│                                                                   │
+│  Slack/Email/Teams on: sync success, sync failure, alert firing  │
+│                                                                   │
+└─────────────────────────────────────────────────────────────────┘
+```
+
 ### 1. What is GitOps?
 
 ```

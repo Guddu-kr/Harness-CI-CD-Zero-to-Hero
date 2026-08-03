@@ -17,6 +17,24 @@ use App\Http\Controllers\AdminController;
 
 
 
+// Health check for Kubernetes probes (deep check — verifies DB connection)
+Route::get('/health', function () {
+    try {
+        \Illuminate\Support\Facades\DB::connection()->getPdo();
+        return response()->json([
+            'status' => 'healthy',
+            'database' => 'connected',
+            'timestamp' => now()->toISOString(),
+        ], 200);
+    } catch (\Exception $e) {
+        return response()->json([
+            'status' => 'unhealthy',
+            'database' => 'disconnected',
+            'error' => $e->getMessage(),
+        ], 503);
+    }
+});
+
 Route::middleware(['auth:sanctum',config('jetstream.auth_session'),'verified'])->group(function () {
     route::get('/dashboard', [HomeController::class, 'Home'])->name('dashboard');
 });
