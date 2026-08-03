@@ -42,6 +42,10 @@ spec:
               value: "{{.Values.dbPort}}"
             - name: DB_DATABASE
               value: { { .Values.dbDatabase } }
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://otel-collector.tracing.svc.cluster.local:4318"
+            - name: OTEL_SERVICE_NAME
+              value: "shop-ecommerce"
           resources:
             requests:
               cpu: 200m

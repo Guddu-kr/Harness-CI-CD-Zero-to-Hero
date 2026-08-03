@@ -1,0 +1,69 @@
+# Pre-built Kubernetes dashboard — shows data immediately in Grafana
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards-k8s
+  namespace: monitoring
+  labels:
+    app: grafana
+data:
+  kubernetes-cluster.json: |
+    {
+      "dashboard": {
+        "title": "Kubernetes Cluster Overview",
+        "uid": "k8s-cluster",
+        "panels": [
+          {
+            "title": "Total Pods Running",
+            "type": "stat",
+            "datasource": "Prometheus",
+            "targets": [{"expr": "sum(kube_pod_status_phase{phase=\"Running\"})"}],
+            "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0}
+          },
+          {
+            "title": "Total Nodes",
+            "type": "stat",
+            "datasource": "Prometheus",
+            "targets": [{"expr": "count(kube_node_info)"}],
+            "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0}
+          },
+          {
+            "title": "CPU Usage %",
+            "type": "gauge",
+            "datasource": "Prometheus",
+            "targets": [{"expr": "100 - (avg(rate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)"}],
+            "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0}
+          },
+          {
+            "title": "Memory Usage %",
+            "type": "gauge",
+            "datasource": "Prometheus",
+            "targets": [{"expr": "(1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100"}],
+            "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0}
+          },
+          {
+            "title": "Pod CPU Usage",
+            "type": "timeseries",
+            "datasource": "Prometheus",
+            "targets": [{"expr": "sum(rate(container_cpu_usage_seconds_total{namespace!=\"\"}[5m])) by (namespace)", "legendFormat": "{{namespace}}"}],
+            "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4}
+          },
+          {
+            "title": "Pod Memory Usage",
+            "type": "timeseries",
+            "datasource": "Prometheus",
+            "targets": [{"expr": "sum(container_memory_working_set_bytes{namespace!=\"\"}) by (namespace) / 1024 / 1024", "legendFormat": "{{namespace}} MB"}],
+            "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4}
+          },
+          {
+            "title": "Pod Restarts",
+            "type": "timeseries",
+            "datasource": "Prometheus",
+            "targets": [{"expr": "sum(kube_pod_container_status_restarts_total) by (namespace, pod)", "legendFormat": "{{namespace}}/{{pod}}"}],
+            "gridPos": {"h": 8, "w": 24, "x": 0, "y": 12}
+          }
+        ],
+        "time": {"from": "now-1h", "to": "now"},
+        "refresh": "30s"
+      }
+    }
