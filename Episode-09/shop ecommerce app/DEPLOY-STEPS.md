@@ -344,7 +344,6 @@ New pods start (rolling update: maxUnavailable: 0 = zero downtime)
 Verify step queries Prometheus: error_rate, latency, pod_restarts
        ↓
 If healthy → Pipeline succeeds → Slack notification sent
-If unhealthy → Rollback GitOpsSync → reverts to previous Git state
 ```
 
 ---
@@ -415,8 +414,8 @@ aws ecr delete-repository --repository-name shop-ecommerce --region us-east-1 --
 
 | Event | Channel | Message |
 |-------|---------|---------|
-| Pipeline succeeds | Slack + Email | "Pipeline Shop Ecommerce GitOps #N succeeded" |
-| Pipeline fails | Slack + Email | "Pipeline failed at stage X — view logs" |
+| Pipeline succeeds | Slack | "Pipeline Shop Ecommerce GitOps #N succeeded" |
+| Pipeline fails | Slack | "Pipeline failed at stage X — view logs" |
 | GitOps sync succeeds | Harness Dashboard | Application: Synced ✅ |
 | GitOps drift detected | Harness Dashboard | Application: OutOfSync → Auto-healed |
 | Alert fires (HighErrorRate) | Slack (via Alertmanager) | "CRITICAL: Error rate above 5%" |
@@ -436,5 +435,5 @@ aws ecr delete-repository --repository-name shop-ecommerce --region us-east-1 --
 | Prometheus Metrics | ServiceMonitor scrapes app every 15s |
 | Grafana Dashboards | Visual CPU/Memory/Latency/Error graphs |
 | Alert Rules | PrometheusRule fires on high errors/crashes |
-| Notifications | Slack + Email on pipeline and alert events |
+| Notifications | Slack on pipeline and alert events |
 | Secret Injection | `<+secrets.getValue()>` resolved by GitOps Agent plugin |

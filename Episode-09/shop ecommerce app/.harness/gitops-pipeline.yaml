@@ -1,66 +1,21 @@
 # ============================================
-# PIPELINE: Episode 9 — GitOps & Observability (Shop Ecommerce)
+# PIPELINE: Episode 9 — GitOps & Observability
 # ============================================
+# Stage 1: Build Laravel image → Push to ECR
+# Stage 2: GitOps → Update values.yaml PR → Approve → Merge → ArgoCD Sync → Verify
 #
-# WHAT THIS PIPELINE DOES:
-#   Stage 1 (CI): Build Laravel Docker image → Push to Amazon ECR
-#   Stage 2 (CD): GitOps PR Pipeline → Update image tag in values.yaml
-#                 → Human approval → Merge PR → ArgoCD syncs to cluster
-#                 → Verify deployment health with Prometheus
+# CHANGE THESE:
+#   projectIdentifier, orgIdentifier, connectorRef, repoName,
+#   serviceRef, environmentRef, gitOpsClusters, applicationName
 #
-# HOW GITOPS WORKS (different from Episodes 6-8):
-#   Episodes 6-8: Pipeline PUSHES to cluster (K8sRollingDeploy)
-#   Episode 9:    Pipeline updates Git → ArgoCD PULLS from Git → Cluster updates
-#
-#   Flow: Build image → Update values.yaml (PR) → Approve → Merge → ArgoCD syncs
-#         If metrics degrade after sync → auto-rollback via GitOpsSync
-#
-# ============================================
-# CHANGE THESE VALUES (to match YOUR Harness account):
-# ============================================
-#   projectIdentifier: HarnessCICDZerotoHero  ← Your project ID (find in URL after /projects/)
-#   orgIdentifier: default                    ← Your org name
-#   connectorRef: account.Github              ← Your GitHub connector (created in Episode 1)
-#   repoName: Harness-CI-CD-Zero-to-Hero      ← Your GitHub repo name
-#   connectorRef: account.aws_account         ← Your AWS OIDC connector (created in Episode 3)
-#   connectorRef: account.k8sdelegate         ← Your K8s connector (delegate-based, created in Episode 6)
-#   serviceRef: shopecommerce                 ← Your service ID (create in CD → Services)
-#   environmentRef: production                ← Your environment ID (create in CD → Environments)
-#   gitOpsClusters → identifier: shopcluster  ← Your GitOps cluster ID (linked in Environment)
-#   gitOpsClusters → agentIdentifier: gitopsagent ← Your GitOps Agent ID (installed in Step 2)
-#   applicationName: shop-ecommerce           ← Your GitOps Application name (created in Step 4)
-#
-# ============================================
-# PREREQUISITES (must be done before running):
-# ============================================
-#   1. account.Github connector — Episode 1
-#   2. account.aws_account OIDC connector — Episode 3
-#   3. Secret: aws_access_key_id — Episode 3
-#   4. Secret: aws_secret_access_key — Episode 3
-#   5. Variable: aws_account_id — Episode 4
-#   6. Variable: aws_region — Episode 3
-#   7. EKS cluster running (GitHub Actions → infra.yml → apply)
-#   8. K8s Delegate installed on EKS (Helm — Episode 6)
-#   9. GitOps Agent installed in "gitops" namespace (Episode 9 — Step 2)
-#  10. GitOps Repository connected to GitHub (Episode 9 — Step 3)
-#  11. GitOps Application: shop-ecommerce (Episode 9 — Step 4)
-#  12. Service: shopecommerce — Kubernetes + GitOps + Release Repo Manifest (Episode 9 — Step 9)
-#  13. Environment: production + GitOps Cluster linked (Episode 9 — Step 10)
-#  14. Secrets in Harness: shop_app_key, shop_db_username, shop_db_password,
-#      shop_stripe_key, shop_stripe_secret, shop_mail_host, shop_mail_username,
-#      shop_mail_password (Episode 9 — Step 7)
-#  15. Prometheus + Grafana installed in "monitoring" namespace (Episode 9 — Step 1)
-#  16. Prometheus connector + Monitored Service in Harness (Episode 9 — Step 11 in DEPLOY-STEPS.md)
-#  17. Secret: slack_webhook_url (for notifications)
-#
-# ============================================
-# CI INFRASTRUCTURE: KubernetesDirect (MNC/Production way)
-# ============================================
-#   Unlike Episodes 1-8 (Harness Cloud), Episode 9 uses KubernetesDirect.
-#   This means CI builds run on YOUR OWN EKS cluster (same one used for deployment).
-#   Why: Code never leaves your VPC. This is how real enterprises do it.
-#   The EKS cluster is already running (for GitOps Agent), so no extra cost.
-#
+# PREREQUISITES:
+#   - account.Github, account.aws_account, account.k8sdelegate connectors
+#   - Secrets: aws_access_key_id, aws_secret_access_key, slack_webhook_url
+#   - Variables: aws_account_id, aws_region
+#   - EKS cluster + K8s Delegate + GitOps Agent + Prometheus installed
+#   - GitOps Application "shop-ecommerce" created in Harness UI
+#   - Service: shopecommerce (Release Repo Manifest + ECR artifact)
+#   - Environment: production (GitOps Cluster linked)
 # ============================================
 pipeline:
   name: episode9-shop-ecommerce-gitops
@@ -80,23 +35,16 @@ pipeline:
         build: <+input>
   stages:
     # ============================================
-    # STAGE 1: Build & Push to ECR
-    # ============================================
-    # Runs on your EKS cluster (KubernetesDirect)
-    # Builds the Laravel Docker image and pushes to Amazon ECR
-    # Uses OIDC connector (no access keys needed for BuildAndPushECR)
-    # Access keys only needed for "Create ECR Repo" step (aws-cli needs them)
+    # STAGE 1: Build & Push to ECR (runs on your EKS — KubernetesDirect)
     # ============================================
     - stage:
         name: build-and-push
         identifier: build_and_push
-        description: "Build Shop Ecommerce Docker image and push to ECR"
+        description: "Build Docker image and push to ECR"
         type: CI
         spec:
           cloneCodebase: true
-          # KubernetesDirect: Builds run on YOUR EKS cluster (not Harness Cloud)
-          # connectorRef: Your K8s connector (delegate-based, created in Episode 6)
-          # namespace: Where build pods spawn (same namespace as delegate)
+          # KubernetesDirect = builds on your EKS (MNC way, code stays in your VPC)
           infrastructure:
             type: KubernetesDirect
             spec:
@@ -108,9 +56,7 @@ pipeline:
               os: Linux
           execution:
             steps:
-              # Step 1: Create ECR repository (idempotent — skips if exists)
-              # Why access keys here: aws-cli in a Run step cannot use OIDC
-              # BuildAndPushECR uses OIDC automatically (no keys needed for that step)
+              # Create ECR repo (needs access keys — aws-cli can't use OIDC)
               - step:
                   type: Run
                   name: Create ECR Repo
@@ -125,9 +71,7 @@ pipeline:
                     command: |-
                       aws ecr create-repository --repository-name shop-ecommerce --region <+variable.aws_region> 2>/dev/null || echo "Repository already exists"
 
-              # Step 2: Build Docker image and push to ECR
-              # Uses OIDC connector (account.aws_account) — no access keys needed
-              # Tags: v<sequenceId> (unique per build) + latest
+              # Build + Push (uses OIDC — no access keys needed)
               - step:
                   type: BuildAndPushECR
                   name: Build and Push to ECR
@@ -141,9 +85,7 @@ pipeline:
                     tags:
                       - v<+pipeline.sequenceId>
                       - latest
-                    # Path to Dockerfile (relative to repo root)
                     dockerfile: "Episode-09/shop ecommerce app/Dockerfile"
-                    # Build context (folder containing code to COPY into image)
                     context: "Episode-09/shop ecommerce app"
 
     # ============================================
@@ -156,19 +98,12 @@ pipeline:
     #   3. Merges the PR into main branch
     #   4. Triggers ArgoCD to sync (apply manifests from Git to cluster)
     #   5. Verifies deployment health with Prometheus metrics
-    #
-    # Key differences from Episodes 6-8:
-    #   - gitOpsEnabled: true (enables GitOps steps)
-    #   - gitOpsClusters (NOT infrastructureDefinitions)
-    #   - GitOpsUpdateReleaseRepo + MergePR + GitOpsSync (NOT K8sRollingDeploy)
-    #   - Service uses "Release Repo Manifest" (NOT K8s Manifest)
-    #
     # Source: https://github.com/harness-community/Gitops-Samples/tree/main/PR-Pipeline
     # ============================================
     - stage:
         name: gitops-deploy
         identifier: gitops_deploy
-        description: "Update values, create PR, approve, merge, sync via GitOps"
+        description: "GitOps PR pipeline — update Git, ArgoCD syncs cluster"
         type: Deployment
         spec:
           deploymentType: Kubernetes
@@ -195,8 +130,7 @@ pipeline:
             # CHANGE THIS: Your environment ID (create in CD → Environments → Production type)
             environmentRef: production
             deployToAll: false
-            # GitOps uses clusters (NOT infrastructureDefinitions like Episodes 6-8)
-            # Link this cluster in: Environment → GitOps Clusters tab → + Select Cluster(s)
+            # GitOps uses gitOpsClusters (NOT infrastructureDefinitions)
             gitOpsClusters:
               # CHANGE THIS: Your GitOps cluster identifier (from Environment → GitOps Clusters)
               - identifier: shopcluster
@@ -204,13 +138,7 @@ pipeline:
                 agentIdentifier: gitopsagent
           execution:
             steps:
-              # Step 1: Update Release Repo (creates a PR)
-              # This step:
-              #   - Clones your repo
-              #   - Updates the "image" variable in values.yaml with new ECR URL:tag
-              #   - Commits to a new branch
-              #   - Creates a Pull Request targeting main branch
-              # The variable name "image" must match what's in your values.yaml
+              # Updates "image" in values.yaml → creates PR in GitHub
               - step:
                   type: GitOpsUpdateReleaseRepo
                   name: Update Release Repo
@@ -225,16 +153,14 @@ pipeline:
                     # Title of the PR that gets created in GitHub
                     prTitle: "Deploy shop-ecommerce build #<+pipeline.sequenceId>"
 
-              # Step 2: Human Approval (pipeline pauses here)
-              # Someone must review the PR in GitHub and click Approve in Harness
-              # This prevents accidental deployments to production
+              # Pipeline pauses — someone must approve before merge
               - step:
                   type: HarnessApproval
                   name: Approve Deployment
                   identifier: approve_deployment
                   timeout: 1d
                   spec:
-                    approvalMessage: "Review PR and approve deployment of shop-ecommerce build #<+pipeline.sequenceId> to production"
+                    approvalMessage: "Approve deployment of build #<+pipeline.sequenceId> to production"
                     includePipelineExecutionHistory: true
                     isAutoRejectEnabled: false
                     approvers:
@@ -245,9 +171,7 @@ pipeline:
                       disallowPipelineExecutor: false
                     approverInputs: []
 
-              # Step 3: Merge PR (after approval)
-              # Merges the PR created in Step 1 into main branch
-              # deleteSourceBranch: true — cleans up the temporary branch
+              # Merges PR into main (deleteSourceBranch cleans up)
               - step:
                   type: MergePR
                   name: Merge PR
@@ -257,10 +181,7 @@ pipeline:
                     deleteSourceBranch: true
                     variables: []
 
-              # Step 4: GitOps Sync (trigger ArgoCD)
-              # After PR is merged, this tells ArgoCD to sync NOW
-              # Without this step, ArgoCD would still sync (within 3 min polling)
-              # But this makes it instant + visible in pipeline execution
+              # Tells ArgoCD to sync NOW (instead of waiting 3 min poll)
               - step:
                   type: GitOpsSync
                   name: Sync Application
@@ -286,11 +207,7 @@ pipeline:
                       replaceResources: false
                       prunePropagationPolicy: foreground
 
-              # Step 5: Continuous Verification (Harness CV)
-              # Queries Prometheus for 10 minutes after deployment
-              # Compares current metrics to baseline (before deploy)
-              # If error rate increases or latency spikes → triggers rollback
-              # Requires: Prometheus connector + Monitored Service configured in Harness
+              # Monitors Prometheus 10 min — auto-rollback if metrics degrade
               - step:
                   type: Verify
                   name: Verify Deployment Health
@@ -306,11 +223,7 @@ pipeline:
                       duration: 10m
                       deploymentTag: v<+pipeline.sequenceId>
 
-            # ============================================
-            # ROLLBACK (auto-triggered if Verify step fails)
-            # ============================================
-            # If Prometheus metrics show degradation, this syncs ArgoCD
-            # back to the previous healthy Git revision (previous commit)
+            # Rollback: syncs ArgoCD to previous healthy revision
             rollbackSteps:
               - step:
                   type: GitOpsSync
@@ -343,12 +256,7 @@ pipeline:
                 type: StageRollback
         gitOpsEnabled: true
 
-  # ============================================
-  # NOTIFICATIONS: Slack + Email on pipeline events
-  # ============================================
-  # Slack: Sends message on success/failure/stage completion
-  # Email: Sends to pipeline executor on failure only
-  # Create slack_webhook_url secret: Slack App → Incoming Webhooks → Copy URL → Harness Secrets
+  # Slack notification on success/failure
   notificationRules:
     - name: Pipeline Notifications
       enabled: true
@@ -362,13 +270,3 @@ pipeline:
         type: Slack
         spec:
           webhookUrl: <+secrets.getValue("slack_webhook_url")>
-
-    - name: Email Notifications
-      enabled: true
-      pipelineEvents:
-        - type: PipelineFailed
-      notificationMethod:
-        type: Email
-        spec:
-          recipients:
-            - <+pipeline.triggeredBy.email>
