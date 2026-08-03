@@ -46,11 +46,17 @@ pipeline:
                     shell: Sh
                     image: bitnami/kubectl:latest
                     command: |-
-                      # Create ArgoCD default project (Harness GitOps doesn't auto-create it)
-                      kubectl apply -f "Episode-09/shop ecommerce app/k8s/argocd-apps/appproject-default.yaml"
+                      # Get the ArgoCD project name (Harness auto-generates it, not always "default")
+                      ARGOCD_PROJECT=$(kubectl get appproject -n gitops -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "default")
+                      echo "ArgoCD Project: $ARGOCD_PROJECT"
 
-                      cp "Episode-09/shop ecommerce app/k8s/argocd-apps/"*.yaml /tmp/
-                      rm /tmp/appproject-default.yaml
+                      # If no project exists, create default
+                      if [ "$ARGOCD_PROJECT" = "" ]; then
+                        kubectl apply -f "Episode-09/shop ecommerce app/k8s/argocd-apps/appproject-default.yaml"
+                        ARGOCD_PROJECT="default"
+                      fi
+
+                      cp "Episode-09/shop ecommerce app/k8s/argocd-apps/"*-app.yaml /tmp/
 
                       BRANCH="<+codebase.branch>"
                       REPO_URL="<+codebase.repoUrl>"
@@ -60,6 +66,11 @@ pipeline:
                       echo "Branch: $BRANCH"
 
                       cd /tmp
+                      # Replace project name with actual ArgoCD project
+                      sed -i "s|project: default|project: $ARGOCD_PROJECT|g" monitoring-app.yaml
+                      sed -i "s|project: default|project: $ARGOCD_PROJECT|g" logging-app.yaml
+                      sed -i "s|project: default|project: $ARGOCD_PROJECT|g" tracing-app.yaml
+
                       sed -i "s|https://github.com/YOUR-USERNAME/Harness-CI-CD-Zero-to-Hero.git|${REPO_URL}|g" monitoring-app.yaml
                       sed -i "s|https://github.com/YOUR-USERNAME/Harness-CI-CD-Zero-to-Hero.git|${REPO_URL}|g" logging-app.yaml
                       sed -i "s|https://github.com/YOUR-USERNAME/Harness-CI-CD-Zero-to-Hero.git|${REPO_URL}|g" tracing-app.yaml
