@@ -132,15 +132,27 @@ Wait 2 min → Harness UI → **Connected** ✅
    - Leave other Advanced settings empty
 6. **Certificate / Proxy settings:** leave empty → Click **Continue**
 7. **Disaster Recovery:** OFF → Click **Continue**
-8. Harness shows **Helm install command** — copy it
-9. On Bastion, run:
+8. Harness shows **Install Agent** screen (Helm Chart tab):
+   - Click **"Download Values Yaml"** → saves `override.yaml` to your laptop
+   - Transfer to Bastion: copy content → `nano override.yaml` → paste → save (Ctrl+X, Y, Enter)
+   - On Bastion, run:
 
 ```bash
 kubectl create namespace gitops
 # Paste the Helm install command from Harness UI
 ```
+```bash
+# Add Helm repo
+helm repo add gitops-agent https://harness.github.io/gitops-helm/
 
-10. Wait 2 min → Harness UI shows agent status: **Healthy** ✅
+# Update repo
+helm repo update gitops-agent
+
+# Install agent (override.yaml must be in current directory)
+helm install argocd gitops-agent/gitops-helm --values override.yaml --namespace gitops
+```
+
+9. Wait 2 min → Click **Continue** in Harness UI → Verification: **Healthy** ✅
 
 
 ---
