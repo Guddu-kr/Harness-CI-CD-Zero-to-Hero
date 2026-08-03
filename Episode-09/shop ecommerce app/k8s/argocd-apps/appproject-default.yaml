@@ -1,0 +1,17 @@
+# ArgoCD default AppProject — required for Applications to work
+# Harness GitOps doesn't auto-create this (vanilla ArgoCD does)
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: default
+  namespace: gitops
+spec:
+  description: Default project
+  sourceRepos:
+    - "*"
+  destinations:
+    - namespace: "*"
+      server: "*"
+  clusterResourceWhitelist:
+    - group: "*"
+      kind: "*"

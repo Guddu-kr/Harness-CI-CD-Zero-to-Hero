@@ -46,7 +46,11 @@ pipeline:
                     shell: Sh
                     image: bitnami/kubectl:latest
                     command: |-
+                      # Create ArgoCD default project (Harness GitOps doesn't auto-create it)
+                      kubectl apply -f "Episode-09/shop ecommerce app/k8s/argocd-apps/appproject-default.yaml"
+
                       cp "Episode-09/shop ecommerce app/k8s/argocd-apps/"*.yaml /tmp/
+                      rm /tmp/appproject-default.yaml
 
                       BRANCH="<+codebase.branch>"
                       REPO_URL="<+codebase.repoUrl>"
