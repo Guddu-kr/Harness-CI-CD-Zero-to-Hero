@@ -182,28 +182,26 @@ helm install argocd gitops-agent/gitops-helm --values override.yaml --namespace 
 
 ## Step 5: Create Harness Service (GitOps)
 
-> **Important:** For GitOps, the Service uses a **Release Repo Manifest** (not K8s Manifest). This tells the `GitOpsUpdateReleaseRepo` step which file to update.
-
-1. Go to **Project Settings → Services → + New Service**
-2. Configure:
-   - **Name:** `shop-ecommerce`
-   - **Deployment Type:** Kubernetes
-   - **Select:** GitOps (checkbox)
-   - **Manifests → + Add Release Repo Manifest:**
-     - Release Repo Store: **GitHub**
-     - GitHub Connector: `account.Github`
-     - Repo: `Harness-CI-CD-Zero-to-Hero`
-     - Branch: `main`
-     - File Path: `Episode-09/shop ecommerce app/k8s/values.yaml`
-   - **Artifact → + Add Artifact Source:**
-     - Type: ECR
-     - Identifier: `ecr_image`
-     - Connector: `account.aws_account`
-     - Region: `<+variable.aws_region>`
-     - Image Path: `shop-ecommerce`
-     - Tag: `<+input>`
-
-Source: [Harness GitOps Service docs](https://developer.harness.io/docs/continuous-delivery/gitops/gitops-entities/service/)
+1. Go to **Services → + New Service**
+2. **Name:** `shop-ecommerce` (ID auto-generates: `shopecommerce`)
+3. **Setup:** Select **Inline**
+4. Click **Save**
+5. **Service Definition → Deployment Type:** Select **Kubernetes**
+6. Check **Enable GitOps**
+7. **Manifests → + Add Release Repo Manifest:**
+   - Release Repo Store: **GitHub**
+   - GitHub Connector: `account.Github`
+   - Repo: `Harness-CI-CD-Zero-to-Hero`
+   - Branch: `master`
+   - File Path: `Episode-09/shop ecommerce app/k8s/values.yaml`
+8. **Artifact → + Add Artifact Source:**
+   - Type: ECR
+   - Identifier: `ecr_image`
+   - Connector: `account.aws_account`
+   - Region: `<+variable.aws_region>`
+   - Image Path: `shop-ecommerce`
+   - Tag: `<+input>`
+9. Click **Save**
 
 ---
 
