@@ -46,15 +46,16 @@ pipeline:
                     shell: Sh
                     image: bitnami/kubectl:latest
                     command: |-
-                      cd "Episode-09/shop ecommerce app/k8s/argocd-apps"
+                      cp "Episode-09/shop ecommerce app/k8s/argocd-apps/"*.yaml /tmp/
 
                       BRANCH="<+codebase.branch>"
-                      REPO_URL=$(git remote get-url origin | sed 's/\.git$//')
+                      REPO_URL="https://github.com/<+pipeline.properties.ci.codebase.repoName>"
 
                       echo "=== Deploying ArgoCD Applications (App-of-Apps) ==="
                       echo "Repo: $REPO_URL"
                       echo "Branch: $BRANCH"
 
+                      cd /tmp
                       sed -i "s|https://github.com/YOUR-USERNAME/Harness-CI-CD-Zero-to-Hero.git|${REPO_URL}.git|g" monitoring-app.yaml
                       sed -i "s|https://github.com/YOUR-USERNAME/Harness-CI-CD-Zero-to-Hero.git|${REPO_URL}.git|g" logging-app.yaml
                       sed -i "s|https://github.com/YOUR-USERNAME/Harness-CI-CD-Zero-to-Hero.git|${REPO_URL}.git|g" tracing-app.yaml
