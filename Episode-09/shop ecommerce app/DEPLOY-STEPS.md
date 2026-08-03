@@ -117,7 +117,21 @@ Wait 2 min → Harness UI → **Connected** ✅
 
 ---
 
-## Step 3: Install Harness GitOps Agent
+## Step 3: Create K8s Connector (k8sdelegate)
+
+1. Go to **Project Settings → Connectors → + New Connector**
+2. Select **Kubernetes Cluster**
+3. **Name:** `k8sdelegate`
+4. **Details:** Select **Use the credentials of a specific Harness Delegate**
+5. **Delegates Setup:** Select tag `eks-k8s-delegate`
+6. **Connection Test:** ✅ Success
+7. Click **Finish**
+
+> This connector is used by pipelines for `KubernetesDirect` CI infrastructure (`connectorRef: k8sdelegate`).
+
+---
+
+## Step 4: Install Harness GitOps Agent
 
 1. Go to **Harness → GitOps → Settings → GitOps Agents**
 2. Click **+ New GitOps Agent**
@@ -160,7 +174,7 @@ helm install argocd gitops-agent/gitops-helm --values override.yaml --namespace 
 
 ---
 
-## Step 4: Create GitOps Repository
+## Step 5: Create GitOps Repository
 
 1. Go to **Harness → GitOps → Settings → Repositories**
 2. Click **+ New Repository**
@@ -180,7 +194,9 @@ helm install argocd gitops-agent/gitops-helm --values override.yaml --namespace 
 
 ---
 
-## Step 5: Create Harness Service (GitOps)
+## Step 6: Create Harness Service (GitOps)
+
+> **Important:** For GitOps, the Service uses a **Release Repo Manifest** (not K8s Manifest). This tells the `GitOpsUpdateReleaseRepo` step which file to update
 
 1. Go to **Services → + New Service**
 2. **Name:** `shop-ecommerce` (ID auto-generates: `shopecommerce`)
@@ -205,7 +221,7 @@ helm install argocd gitops-agent/gitops-helm --values override.yaml --namespace 
 
 ---
 
-## Step 6: Create Harness Environment + GitOps Cluster
+## Step 7: Create Harness Environment + GitOps Cluster
 
 **Environment:**
 1. Go to **Project Settings → Environments → + New Environment**
@@ -216,7 +232,7 @@ helm install argocd gitops-agent/gitops-helm --values override.yaml --namespace 
 1. Open the `production` environment
 2. Go to **GitOps Clusters** tab
 3. Click **+ Select Cluster(s)**
-4. Select the GitOps cluster from the agent installed in Step 3
+4. Select the GitOps cluster from the agent installed in Step 4
    - Identifier: `shopcluster`
    - Agent: `gitopsagent`
 
@@ -224,7 +240,7 @@ helm install argocd gitops-agent/gitops-helm --values override.yaml --namespace 
 
 ---
 
-## Step 7: Create Secrets in Harness (Built-in Secret Manager)
+## Step 8: Create Secrets in Harness (Built-in Secret Manager)
 
 1. Go to **Project Settings → Secrets → + New Secret → Text**
 2. Secret Manager: **Harness Built-in Secret Manager** (default)
@@ -244,7 +260,7 @@ helm install argocd gitops-agent/gitops-helm --values override.yaml --namespace 
 
 ---
 
-## Step 8: Create GitOps Application
+## Step 9: Create GitOps Application
 
 1. Go to **Harness → GitOps → Applications**
 2. Click **+ New Application**
@@ -268,7 +284,7 @@ helm install argocd gitops-agent/gitops-helm --values override.yaml --namespace 
 
 ---
 
-## Step 9: Configure Slack Notifications
+## Step 10: Configure Slack Notifications
 
 1. Create a Slack Incoming Webhook:
    - Go to your Slack workspace → Apps → Incoming Webhooks → Add
@@ -281,7 +297,7 @@ helm install argocd gitops-agent/gitops-helm --values override.yaml --namespace 
 
 ---
 
-## Step 10: Install Observability Stack (Prometheus + Grafana + EFK + Jaeger)
+## Step 11: Install Observability Stack (Prometheus + Grafana + EFK + Jaeger)
 
 > **Fully automated!** One pipeline deploys everything via ArgoCD App-of-Apps.
 
@@ -301,7 +317,7 @@ helm install argocd gitops-agent/gitops-helm --values override.yaml --namespace 
 
 ---
 
-## Step 11: Import Pipeline from Git
+## Step 12: Import Pipeline from Git
 
 1. Go to **Pipelines → + Create Pipeline**
 2. Select **Import from Git**
@@ -331,7 +347,7 @@ Source: [Harness GitOps pipeline steps](https://developer.harness.io/docs/contin
 
 ---
 
-## Step 12: Run the Pipeline
+## Step 13: Run the Pipeline
 
 1. Click **Run Pipeline**
 2. Select branch: `main`
@@ -376,7 +392,7 @@ If healthy → Pipeline succeeds → Slack notification sent
 
 ---
 
-## Step 13: Test GitOps Self-Heal
+## Step 14: Test GitOps Self-Heal
 
 ```bash
 # Manually delete a pod (simulating drift)
@@ -390,7 +406,7 @@ The GitOps agent detects the drift and reconciles back to the Git-defined state.
 
 ---
 
-## Step 14: Test Rollback
+## Step 15: Test Rollback
 
 ```bash
 # Option 1: Revert Git commit
@@ -404,7 +420,7 @@ git push origin main
 
 ---
 
-## Step 15: Access Grafana Dashboards
+## Step 16: Access Grafana Dashboards
 
 ```bash
 kubectl get svc grafana -n monitoring
@@ -419,7 +435,7 @@ Import recommended dashboards:
 
 ---
 
-## Step 16: Cleanup
+## Step 17: Cleanup
 
 ```bash
 # Delete ArgoCD applications (this removes all observability pods)

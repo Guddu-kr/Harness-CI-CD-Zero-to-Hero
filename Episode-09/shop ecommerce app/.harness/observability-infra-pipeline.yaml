@@ -30,7 +30,7 @@ pipeline:
           infrastructure:
             type: KubernetesDirect
             spec:
-              connectorRef: account.k8sdelegate # ← CHANGE: your K8s connector
+              connectorRef: k8sdelegate # ← CHANGE: your K8s connector
               namespace: harness-delegate-ng
               automountServiceAccountToken: true
               os: Linux
