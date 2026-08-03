@@ -118,16 +118,30 @@ Wait 2 min → Harness UI → **Connected** ✅
 
 1. Go to **Harness → GitOps → Settings → GitOps Agents**
 2. Click **+ New GitOps Agent**
-3. Select **Existing Cluster** (same EKS)
-4. Namespace: `gitops`
-5. Download the YAML and apply from Bastion:
+3. **"Do you have any existing Argo CD or Flux instances?"** → Select **No** → Click **Start**
+4. Fill in Overview:
+   - **Name:** `gitopsagent`
+   - **GitOps Operator:** Argo (default)
+   - **Namespace:** `gitops`
+   - **Namespaced:** unchecked
+   - **Skip Crds:** unchecked
+   - **High Availability:** OFF
+5. Under **Advanced** (scroll down):
+   - **Enable ArgoCD Harness Plugin:** ✅ Check this (required for `<+secrets.getValue()>` resolution)
+   - Leave other Advanced settings empty
+6. **Certificate / Proxy settings:** leave empty → Click **Continue**
+7. **Disaster Recovery:** OFF → Click **Continue**
+8. Harness shows **Helm install command** — copy it
+9. On Bastion, run:
 
 ```bash
 kubectl create namespace gitops
-kubectl apply -f gitops-agent.yaml -n gitops
+# Paste the Helm install command from Harness UI
 ```
 
-6. Verify agent is connected in Harness dashboard (green status)
+10. Wait 2 min → Harness UI shows agent status: **Healthy** ✅
+
+> **Important:** Check "Enable ArgoCD Harness Plugin" — without this, `<+secrets.getValue()>` in values.yaml won't resolve during GitOps sync.
 
 ---
 
