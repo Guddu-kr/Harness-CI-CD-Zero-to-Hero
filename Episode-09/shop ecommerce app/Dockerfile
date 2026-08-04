@@ -7,8 +7,9 @@ COPY vite.config.js tailwind.config.js postcss.config.js ./
 COPY resources/ resources/
 RUN npm run build
 
-# Stage 2: Install PHP dependencies
-FROM composer:2 AS composer-builder
+# Stage 2: Install PHP dependencies (PHP 8.1 to match composer.lock)
+FROM php:8.1-cli-alpine AS composer-builder
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 WORKDIR /app
 COPY composer.json composer.lock ./
 RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist
