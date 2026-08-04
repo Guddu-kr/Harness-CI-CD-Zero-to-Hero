@@ -160,21 +160,6 @@ pipeline:
                       replaceResources: false
                       prunePropagationPolicy: foreground
 
-              - step:
-                  type: Verify
-                  name: Verify Deployment Health
-                  identifier: verify_deployment
-                  timeout: 15m
-                  spec:
-                    type: Rolling
-                    monitoredService:
-                      type: Default
-                      spec: {}
-                    spec:
-                      sensitivity: MEDIUM
-                      duration: 10m
-                      deploymentTag: v<+pipeline.sequenceId>
-
             rollbackSteps:
               - step:
                   type: GitOpsSync
