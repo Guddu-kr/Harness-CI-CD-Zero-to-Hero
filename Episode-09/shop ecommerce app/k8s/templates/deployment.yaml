@@ -8,7 +8,7 @@ metadata:
     app.kubernetes.io/name: shop-ecommerce
     app.kubernetes.io/component: web
 spec:
-  replicas: { { int .Values.replicas } }
+  replicas: {{int .Values.replicas}}
   selector:
     matchLabels:
       app: shop-ecommerce
@@ -26,7 +26,7 @@ spec:
     spec:
       containers:
         - name: shop-ecommerce
-          image: { { .Values.image } }
+          image: {{.Values.image}}
           ports:
             - containerPort: 80
               protocol: TCP
@@ -37,11 +37,11 @@ spec:
                 name: shop-ecommerce-secrets
           env:
             - name: DB_HOST
-              value: { { .Values.dbHost } }
+              value: "{{.Values.dbHost}}"
             - name: DB_PORT
               value: "{{.Values.dbPort}}"
             - name: DB_DATABASE
-              value: { { .Values.dbDatabase } }
+              value: "{{.Values.dbDatabase}}"
             - name: OTEL_EXPORTER_OTLP_ENDPOINT
               value: "http://otel-collector.tracing.svc.cluster.local:4318"
             - name: OTEL_SERVICE_NAME
