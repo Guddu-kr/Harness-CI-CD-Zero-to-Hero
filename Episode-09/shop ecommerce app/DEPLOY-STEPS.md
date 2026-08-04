@@ -378,6 +378,14 @@ helm install argocd gitops-agent/gitops-helm --values override.yaml --namespace 
 
 > ArgoCD App-of-Apps pattern — after this runs once, ArgoCD manages observability forever.
 
+```bash
+kubectl get applications -n gitops
+```
+```bash
+kubectl get svc grafana -n monitoring
+kubectl get svc kibana -n logging
+kubectl get svc jaeger-query -n tracing
+```
 ---
 
 ## Step 12: Import Pipeline from Git

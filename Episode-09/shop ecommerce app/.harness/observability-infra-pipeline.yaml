@@ -46,7 +46,15 @@ pipeline:
                     shell: Sh
                     image: bitnami/kubectl:latest
                     command: |-
-                      # Get the ArgoCD project name (Harness auto-generates it, not always "default")
+                      # Create StorageClass (needed by Elasticsearch + Jaeger PVCs)
+                      kubectl apply -f "Episode-09/shop ecommerce app/k8s/storageclass.yaml"
+
+                      # Apply monitoring files that have {{ }} syntax (ArgoCD plugin can't handle them)
+                      kubectl create namespace monitoring 2>/dev/null || true
+                      kubectl apply -f "Episode-09/shop ecommerce app/k8s/monitoring/prometheus-rules.yaml" 2>/dev/null || true
+                      kubectl apply -f "Episode-09/shop ecommerce app/k8s/monitoring/service-monitor.yaml" 2>/dev/null || true
+
+                      # Create ArgoCD default project (Harness GitOps doesn't auto-create it)
                       ARGOCD_PROJECT=$(kubectl get appproject -n gitops -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "default")
                       echo "ArgoCD Project: $ARGOCD_PROJECT"
 
