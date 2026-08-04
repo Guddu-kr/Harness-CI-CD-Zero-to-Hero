@@ -1,8 +1,11 @@
 # ============================================
 # PIPELINE 1: Observability Infrastructure (Run ONCE)
 # ============================================
-# Deploys ArgoCD App-of-Apps — ArgoCD then manages all observability.
-# After this runs, ArgoCD auto-syncs monitoring/logging/tracing from Git.
+# MNC Pattern:
+#   - Helm for Prometheus + Grafana (kube-prometheus-stack)
+#   - kubectl apply for EFK (custom manifests)
+#   - kubectl apply for OTel + Jaeger (simple manifests)
+#   - ArgoCD only for app deployment (not infra)
 # ============================================
 pipeline:
   name: episode9-observability-infra
@@ -17,13 +20,10 @@ pipeline:
         repoName: Harness-CI-CD-Zero-to-Hero # ← CHANGE: your repo name
         build: <+input>
   stages:
-    # ============================================
-    # STAGE 1: Deploy ArgoCD Applications (App-of-Apps)
-    # ============================================
     - stage:
-        name: deploy-argocd-apps
-        identifier: deploy_argocd_apps
-        description: "Apply ArgoCD Applications — ArgoCD syncs observability from Git"
+        name: install-observability
+        identifier: install_observability
+        description: "Install full observability stack"
         type: CI
         spec:
           cloneCodebase: true
@@ -34,106 +34,98 @@ pipeline:
               namespace: harness-delegate-ng
               automountServiceAccountToken: true
               os: Linux
-          # NOTE: KubernetesDirect needs connectorRef on every Run step (unlike Harness Cloud)
           execution:
             steps:
+              # Step 1: StorageClass
               - step:
                   type: Run
-                  name: Deploy ArgoCD Apps
-                  identifier: deploy_argocd_apps_step
+                  name: Create StorageClass
+                  identifier: create_storageclass
                   spec:
-                    connectorRef: dockerhub # ← CHANGE: your Docker Hub connector
+                    connectorRef: dockerhub
                     shell: Sh
                     image: bitnami/kubectl:latest
                     command: |-
-                      # Create StorageClass (needed by Elasticsearch + Jaeger PVCs)
                       kubectl apply -f "Episode-09/shop ecommerce app/k8s/storageclass.yaml"
 
-                      # Apply monitoring files that have {{ }} syntax (ArgoCD plugin can't handle them)
-                      kubectl create namespace monitoring 2>/dev/null || true
-                      kubectl apply -f "Episode-09/shop ecommerce app/k8s/monitoring/prometheus-rules.yaml" 2>/dev/null || true
-                      kubectl apply -f "Episode-09/shop ecommerce app/k8s/monitoring/service-monitor.yaml" 2>/dev/null || true
-
-                      # Create ArgoCD default project (Harness GitOps doesn't auto-create it)
-                      ARGOCD_PROJECT=$(kubectl get appproject -n gitops -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "default")
-                      echo "ArgoCD Project: $ARGOCD_PROJECT"
-
-                      # Always ensure default project exists (idempotent)
-                      kubectl apply -f "Episode-09/shop ecommerce app/k8s/argocd-apps/appproject-default.yaml" 2>/dev/null || true
-
-                      cp "Episode-09/shop ecommerce app/k8s/argocd-apps/"*-app.yaml /tmp/
-
-                      BRANCH="<+codebase.branch>"
-                      REPO_URL="<+codebase.repoUrl>"
-
-                      echo "=== Deploying ArgoCD Applications (App-of-Apps) ==="
-                      echo "Repo: $REPO_URL"
-                      echo "Branch: $BRANCH"
-
-                      cd /tmp
-                      # Replace project name with actual ArgoCD project
-                      sed -i "s|project: default|project: $ARGOCD_PROJECT|g" monitoring-app.yaml
-                      sed -i "s|project: default|project: $ARGOCD_PROJECT|g" logging-app.yaml
-                      sed -i "s|project: default|project: $ARGOCD_PROJECT|g" tracing-app.yaml
-
-                      sed -i "s|https://github.com/YOUR-USERNAME/Harness-CI-CD-Zero-to-Hero.git|${REPO_URL}|g" monitoring-app.yaml
-                      sed -i "s|https://github.com/YOUR-USERNAME/Harness-CI-CD-Zero-to-Hero.git|${REPO_URL}|g" logging-app.yaml
-                      sed -i "s|https://github.com/YOUR-USERNAME/Harness-CI-CD-Zero-to-Hero.git|${REPO_URL}|g" tracing-app.yaml
-
-                      sed -i "s|targetRevision: master|targetRevision: $BRANCH|g" monitoring-app.yaml
-                      sed -i "s|targetRevision: master|targetRevision: $BRANCH|g" logging-app.yaml
-                      sed -i "s|targetRevision: master|targetRevision: $BRANCH|g" tracing-app.yaml
-
-                      cat monitoring-app.yaml
-
-                      # Delete old apps if they exist (clears cached errors)
-                      kubectl delete application monitoring logging tracing -n gitops 2>/dev/null || true
-                      sleep 5
-
-                      kubectl apply -f monitoring-app.yaml
-                      kubectl apply -f logging-app.yaml
-                      kubectl apply -f tracing-app.yaml
-
-                      echo "=== ArgoCD Apps Created — will auto-sync ==="
-
+              # Step 2: Prometheus + Grafana (Helm)
               - step:
                   type: Run
-                  name: Wait for Sync
-                  identifier: wait_for_sync
+                  name: Install Prometheus + Grafana
+                  identifier: install_prometheus_grafana
                   spec:
-                    connectorRef: dockerhub # ← CHANGE: your Docker Hub connector
+                    connectorRef: dockerhub
+                    shell: Sh
+                    image: alpine/helm:latest
+                    command: |-
+                      helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+                      helm repo update
+                      helm upgrade --install prometheus prometheus-community/kube-prometheus-stack \
+                        --namespace monitoring --create-namespace \
+                        --set grafana.adminPassword=admin123 \
+                        --set grafana.service.type=LoadBalancer \
+                        --set "grafana.service.annotations.service\\.beta\\.kubernetes\\.io/aws-load-balancer-scheme=internet-facing" \
+                        --set prometheus.prometheusSpec.serviceMonitorSelectorNilUsesHelmValues=false \
+                        --wait --timeout 5m
+
+              # Step 3: EFK
+              - step:
+                  type: Run
+                  name: Install EFK
+                  identifier: install_efk
+                  spec:
+                    connectorRef: dockerhub
                     shell: Sh
                     image: bitnami/kubectl:latest
                     command: |-
-                      echo "=== Waiting for ArgoCD to sync (3-5 min) ==="
-                      kubectl wait --for=condition=ready pod -l app=grafana -n monitoring --timeout=300s 2>/dev/null || echo "Grafana still syncing..."
-                      kubectl wait --for=condition=ready pod -l app=elasticsearch -n logging --timeout=300s 2>/dev/null || echo "ES still syncing..."
-                      kubectl wait --for=condition=ready pod -l app=jaeger -n tracing --timeout=300s 2>/dev/null || echo "Jaeger still syncing..."
-                      echo "=== Sync Complete ==="
+                      cd "Episode-09/shop ecommerce app/k8s/logging"
+                      kubectl apply -f namespace.yaml
+                      kubectl apply -f credentials-secret.yaml
+                      kubectl apply -f elasticsearch.yaml
+                      kubectl wait --for=condition=ready pod -l app=elasticsearch -n logging --timeout=180s 2>/dev/null || echo "ES starting..."
+                      kubectl apply -f init-kibana-user.yaml
+                      kubectl wait --for=condition=complete job/init-kibana-user -n logging --timeout=60s 2>/dev/null || true
+                      kubectl apply -f fluentd.yaml
+                      kubectl apply -f kibana.yaml
 
+              # Step 4: OTel + Jaeger
+              - step:
+                  type: Run
+                  name: Install Tracing
+                  identifier: install_tracing
+                  spec:
+                    connectorRef: dockerhub
+                    shell: Sh
+                    image: bitnami/kubectl:latest
+                    command: |-
+                      cd "Episode-09/shop ecommerce app/k8s/tracing"
+                      kubectl apply -f namespace.yaml
+                      kubectl apply -f otel-collector/configmap.yaml
+                      kubectl apply -f otel-collector/deployment.yaml
+                      kubectl apply -f otel-collector/service.yaml
+                      kubectl apply -f jaeger/deployment.yaml
+                      kubectl apply -f jaeger/service.yaml
+
+              # Step 5: Get URLs
               - step:
                   type: Run
                   name: Get All URLs
                   identifier: get_all_urls
                   spec:
-                    connectorRef: dockerhub # ← CHANGE: your Docker Hub connector
+                    connectorRef: dockerhub
                     shell: Sh
                     image: bitnami/kubectl:latest
                     command: |-
                       sleep 30
-                      GRAFANA=$(kubectl get svc grafana -n monitoring -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "pending")
+                      GRAFANA=$(kubectl get svc prometheus-grafana -n monitoring -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "pending")
                       KIBANA=$(kubectl get svc kibana -n logging -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "pending")
                       JAEGER=$(kubectl get svc jaeger-query -n tracing -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "pending")
-
                       echo "=============================================="
-                      echo "  OBSERVABILITY STACK READY (ArgoCD managed)"
+                      echo "  OBSERVABILITY STACK READY"
                       echo "=============================================="
-                      echo ""
                       echo "  1. GRAFANA:  http://$GRAFANA"
                       echo "     Login:    admin / admin123"
-                      echo ""
                       echo "  2. KIBANA:   http://$KIBANA"
                       echo "     Login:    elastic / HarnessEFK@2026"
-                      echo ""
                       echo "  3. JAEGER:   http://$JAEGER"
                       echo "=============================================="
