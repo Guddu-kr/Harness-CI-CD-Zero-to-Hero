@@ -1,5 +1,4 @@
-# ArgoCD Application — deploys monitoring manifests
-# Excludes files with {{ }} syntax (applied by pipeline directly)
+# ArgoCD Application — deploys monitoring manifests as plain YAML (directory type)
 # CHANGE: repoURL to YOUR GitHub repo URL
 apiVersion: argoproj.io/v1alpha1
 kind: Application
@@ -17,7 +16,6 @@ spec:
     path: "Episode-09/shop ecommerce app/k8s/monitoring"
     directory:
       recurse: true
-      exclude: "{prometheus-rules.yaml,service-monitor.yaml,grafana/dashboards-k8s.yaml}"
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring
