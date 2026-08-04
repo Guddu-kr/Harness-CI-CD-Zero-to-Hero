@@ -57,9 +57,11 @@ spec:
               mountPath: /usr/share/elasticsearch/data
               subPath: esdata
           readinessProbe:
-            httpGet:
-              path: /_cluster/health
-              port: 9200
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - "curl -s -u elastic:${ELASTIC_PASSWORD} http://localhost:9200/_cluster/health | grep -q green"
             initialDelaySeconds: 30
             periodSeconds: 10
   volumeClaimTemplates:
