@@ -341,8 +341,8 @@ helm install argocd gitops-agent/gitops-helm --values override.yaml --namespace 
    - **GitOps Operator:** Argo
    - **GitOps Agent:** `gitopsagent` (green, PROJECT)
    - **Source Namespace:** `gitops`
-   - **Service:** Select `shop-ecommerce` (created in Step 5)
-   - **Environment:** Select `production` (created in Step 6)
+   - **Service:** Select `shop-ecommerce` (created in Step 6)
+   - **Environment:** Select `production` (created in Step 7)
    - Click **Continue**
 4. **Sync Policy:**
    - Select **Automatic**
@@ -350,13 +350,15 @@ helm install argocd gitops-agent/gitops-helm --values override.yaml --namespace 
    - Leave all other options unchecked
    - Click **Continue**
 5. **Source:**
-   - Repository: Select from Step 4
+   - Repository: Select from Step 5
    - Path: `Episode-09/shop ecommerce app/k8s/`
    - Target Revision: `master`
 6. **Destination:**
    - Cluster: `https://kubernetes.default.svc` (in-cluster)
    - Namespace: `shop-ecommerce`
 7. Click **Finish**
+
+> **Note:** The `k8s/` folder has a `Chart.yaml` — this tells the Harness ArgoCD plugin to process `values.yaml` with `<+secrets.getValue()>` expressions. Without `Chart.yaml`, the plugin fails.
 
 ---
 
