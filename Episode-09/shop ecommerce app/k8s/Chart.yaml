@@ -1,4 +1,4 @@
 apiVersion: v2
 name: shop-ecommerce
 version: 1.0.0
-description: Shop Ecommerce K8s manifests (processed by Harness GitOps plugin)
+description: Shop Ecommerce K8s manifests

@@ -67,6 +67,38 @@ pipeline:
                     dockerfile: "Episode-09/shop ecommerce app/Dockerfile"
                     context: "Episode-09/shop ecommerce app"
 
+              # Create K8s Secret (Harness resolves secrets on free plan via delegate)
+              - step:
+                  type: Run
+                  name: Create App Secrets
+                  identifier: create_app_secrets
+                  spec:
+                    connectorRef: dockerhub
+                    shell: Sh
+                    image: bitnami/kubectl:latest
+                    envVariables:
+                      SHOP_APP_KEY: <+secrets.getValue("shop_app_key")>
+                      SHOP_DB_USERNAME: <+secrets.getValue("shop_db_username")>
+                      SHOP_DB_PASSWORD: <+secrets.getValue("shop_db_password")>
+                      SHOP_STRIPE_KEY: <+secrets.getValue("shop_stripe_key")>
+                      SHOP_STRIPE_SECRET: <+secrets.getValue("shop_stripe_secret")>
+                      SHOP_MAIL_HOST: <+secrets.getValue("shop_mail_host")>
+                      SHOP_MAIL_USERNAME: <+secrets.getValue("shop_mail_username")>
+                      SHOP_MAIL_PASSWORD: <+secrets.getValue("shop_mail_password")>
+                    command: |-
+                      kubectl create namespace shop-ecommerce 2>/dev/null || true
+                      kubectl delete secret shop-ecommerce-secrets -n shop-ecommerce 2>/dev/null || true
+                      kubectl create secret generic shop-ecommerce-secrets -n shop-ecommerce \
+                        --from-literal=APP_KEY="$SHOP_APP_KEY" \
+                        --from-literal=DB_USERNAME="$SHOP_DB_USERNAME" \
+                        --from-literal=DB_PASSWORD="$SHOP_DB_PASSWORD" \
+                        --from-literal=STRIPE_KEY="$SHOP_STRIPE_KEY" \
+                        --from-literal=STRIPE_SECRET="$SHOP_STRIPE_SECRET" \
+                        --from-literal=MAIL_HOST="$SHOP_MAIL_HOST" \
+                        --from-literal=MAIL_USERNAME="$SHOP_MAIL_USERNAME" \
+                        --from-literal=MAIL_PASSWORD="$SHOP_MAIL_PASSWORD"
+                      echo "=== Secret created in shop-ecommerce namespace ==="
+
     # ============================================
     # STAGE 2: GitOps Deploy (PR → Approve → Merge → Sync → Verify)
     # ============================================

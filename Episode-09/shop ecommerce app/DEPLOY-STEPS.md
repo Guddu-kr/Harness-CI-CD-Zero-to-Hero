@@ -397,28 +397,46 @@ kubectl get svc jaeger-query -n tracing
 3. Configure:
    - Connector: `account.Github`
    - Repo: `Harness-CI-CD-Zero-to-Hero`
-   - Branch: `main`
+   - Branch: `master`
    - YAML Path: `Episode-09/shop ecommerce app/.harness/gitops-pipeline.yaml`
 
-> **GitOps Pipeline Structure (2 stages):**
-> - **Stage 1 (CI):** Build image → Push to ECR
-> - **Stage 2 (CD — gitOpsEnabled: true):** UpdateReleaseRepo → Approval → MergePR → GitOpsSync → Verify
+> **Pipeline flow:**
+> - **Stage 1 (CI):** Build image → Push ECR → **Create K8s Secret** (Harness resolves via delegate)
+> - **Stage 2 (CD):** UpdateReleaseRepo → Approve → MergePR → GitOpsSync
 >
-> The `gitOpsEnabled: true` flag tells Harness this is a GitOps deployment — it uses `gitOpsClusters` instead of `infrastructureDefinitions`.
-
-### Pipeline Step Types Reference
-
-| Step | Type | What It Does |
-|------|------|-------------|
-| Update Release Repo | `GitOpsUpdateReleaseRepo` | Updates `image` variable in `values.yaml`, commits to a branch, creates PR |
-| Approve | `HarnessApproval` | Blocks pipeline until a team member approves |
-| Merge PR | `MergePR` | Merges the PR into `main` branch (with `deleteSourceBranch: true`) |
-| GitOps Sync | `GitOpsSync` | Triggers ArgoCD to sync application (applies manifests to cluster) |
-| Verify | `Verify` | Queries Prometheus, compares pre/post metrics, auto-rollback if degraded |
-
-Source: [Harness GitOps pipeline steps](https://developer.harness.io/docs/continuous-delivery/gitops/pr-pipelines/gitops-pipeline-steps/)
+> **Secrets pattern (free plan):**
+> - Secrets created by pipeline step (`kubectl create secret`) — NOT by ArgoCD
+> - Deployment references pre-existing secret via `secretRef`
+> - On Enterprise plan: secrets resolve directly in values.yaml during ArgoCD sync
+>
+> **After first pipeline run:**
+> - Secret exists on cluster (persists until deleted)
+> - Push code → ArgoCD auto-syncs within 3 min → app updates
+> - Pipeline only needed for: new Docker image OR secret rotation
 
 ---
+```bash
+#Check the ArgoCD app status:
+kubectl describe application shop-ecommerce -n gitops | grep -A5 "Message"
+```
+```bash
+# Check app pods
+kubectl get pods -n shop-ecommerce
+
+# Check services (LoadBalancer URL)
+kubectl get svc -n shop-ecommerce
+
+# Check all observability
+kubectl get pods -n monitoring
+kubectl get pods -n logging
+kubectl get pods -n tracing
+
+# Get all LoadBalancer URLs
+kubectl get svc grafana -n monitoring
+kubectl get svc kibana -n logging
+kubectl get svc jaeger-query -n tracing
+kubectl get svc shop-ecommerce -n shop-ecommerce
+```
 
 ## Step 13: Run the Pipeline
 

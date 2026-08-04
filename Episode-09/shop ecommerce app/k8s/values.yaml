@@ -1,13 +1,16 @@
-image: 713939171080.dkr.ecr.us-east-1.amazonaws.com/shop-ecommerce:v3
+# ============================================
+# VALUES.YAML — App configuration
+# ============================================
+# Secrets are NOT here — they're created by the pipeline separately.
+# This file only has non-sensitive config + image reference.
+# ============================================
+
+# Image (updated by GitOpsUpdateReleaseRepo step via PR)
+image: <+artifact.image>
+
 replicas: 2
-appKey: <+secrets.getValue("shop_app_key")>
+
+# Database connection (non-sensitive — points to K8s service)
 dbHost: mysql-service.shop-ecommerce.svc.cluster.local
-dbPort: '3306'
+dbPort: "3306"
 dbDatabase: shop_ecommerce
-dbUsername: <+secrets.getValue("shop_db_username")>
-dbPassword: <+secrets.getValue("shop_db_password")>
-stripeKey: <+secrets.getValue("shop_stripe_key")>
-stripeSecret: <+secrets.getValue("shop_stripe_secret")>
-mailHost: <+secrets.getValue("shop_mail_host")>
-mailUsername: <+secrets.getValue("shop_mail_username")>
-mailPassword: <+secrets.getValue("shop_mail_password")>
