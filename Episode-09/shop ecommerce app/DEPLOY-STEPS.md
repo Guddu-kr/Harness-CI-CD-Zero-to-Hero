@@ -438,6 +438,13 @@ kubectl get svc jaeger-query -n tracing
 kubectl get svc shop-ecommerce -n shop-ecommerce
 ```
 
+```bash
+# Wait 2-3 minutes for ArgoCD to detect the change, then:
+kubectl get pods -n shop-ecommerce
+kubectl get svc -n shop-ecommerce
+
+```
+
 ## Step 13: Run the Pipeline
 
 1. Click **Run Pipeline**
