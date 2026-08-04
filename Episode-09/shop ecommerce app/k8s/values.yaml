@@ -1,24 +1,8 @@
-# ============================================
-# VALUES.YAML — Harness GitOps resolves expressions here
-# GitOpsUpdateReleaseRepo step updates "image" via PR
-# ArgoCD Secret Injection Plugin resolves <+secrets.getValue()>
-# Manifests reference these via Go templating: {{.Values.xxx}}
-# ============================================
-
-# --- IMAGE ---
-# GitOpsUpdateReleaseRepo step updates this field with new ECR URL:tag
-# Pattern: <account_id>.dkr.ecr.<region>.amazonaws.com/shop-ecommerce:v<build_number>
-image: <+artifact.image>
-
-# --- REPLICAS ---
+image: 713939171080.dkr.ecr.us-east-1.amazonaws.com/shop-ecommerce:v3
 replicas: 2
-
-# --- SECRETS (from Harness Built-in Secret Manager) ---
-# Harness GitOps Agent resolves these at sync time (Config Management Plugin)
-# Actual values NEVER appear in Git
 appKey: <+secrets.getValue("shop_app_key")>
 dbHost: mysql-service.shop-ecommerce.svc.cluster.local
-dbPort: "3306"
+dbPort: '3306'
 dbDatabase: shop_ecommerce
 dbUsername: <+secrets.getValue("shop_db_username")>
 dbPassword: <+secrets.getValue("shop_db_password")>
