@@ -12,6 +12,9 @@ data:
       scrape_interval: 15s
       evaluation_interval: 15s
 
+    rule_files:
+      - /etc/prometheus/alerts.yml
+
     scrape_configs:
       - job_name: 'kubernetes-pods'
         kubernetes_sd_configs:
@@ -56,3 +59,31 @@ data:
       - job_name: 'node-exporter'
         static_configs:
           - targets: ['node-exporter.monitoring.svc.cluster.local:9100']
+
+  alerts.yml: |
+    groups:
+      - name: shop-ecommerce.rules
+        rules:
+          - alert: HighErrorRate
+            expr: sum(rate(nginx_http_requests_total{status=~"5.."}[5m])) / sum(rate(nginx_http_requests_total[5m])) > 0.05
+            for: 2m
+            labels:
+              severity: critical
+            annotations:
+              summary: "High error rate detected"
+
+          - alert: PodCrashLooping
+            expr: rate(kube_pod_container_status_restarts_total{namespace="shop-ecommerce"}[15m]) > 0
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Pod is crash looping"
+
+          - alert: PodNotReady
+            expr: kube_pod_status_ready{namespace="shop-ecommerce", condition="true"} == 0
+            for: 3m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Pod is not ready"
