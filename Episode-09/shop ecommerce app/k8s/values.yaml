@@ -1,16 +1,5 @@
-# ============================================
-# VALUES.YAML — App configuration
-# ============================================
-# Secrets are NOT here — they're created by the pipeline separately.
-# This file only has non-sensitive config + image reference.
-# ============================================
-
-# Image (updated by GitOpsUpdateReleaseRepo step via PR)
-image: <+artifact.image>
-
+image: 713939171080.dkr.ecr.us-east-1.amazonaws.com/shop-ecommerce:v4
 replicas: 2
-
-# Database connection (non-sensitive — points to K8s service)
 dbHost: mysql-service.shop-ecommerce.svc.cluster.local
-dbPort: "3306"
+dbPort: '3306'
 dbDatabase: shop_ecommerce
