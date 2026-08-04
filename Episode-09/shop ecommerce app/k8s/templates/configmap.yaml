@@ -24,7 +24,7 @@ data:
   CACHE_DRIVER: "file"
   FILESYSTEM_DISK: "local"
   QUEUE_CONNECTION: "sync"
-  SESSION_DRIVER: "database"
+  SESSION_DRIVER: "file"
   SESSION_LIFETIME: "120"
   MAIL_MAILER: "smtp"
   MAIL_PORT: "587"

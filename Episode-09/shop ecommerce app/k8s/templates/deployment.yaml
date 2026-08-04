@@ -24,6 +24,11 @@ spec:
         app.kubernetes.io/name: shop-ecommerce
         app.kubernetes.io/component: web
     spec:
+      # Wait for MySQL before starting app
+      initContainers:
+        - name: wait-for-mysql
+          image: busybox:1.36
+          command: ['sh', '-c', 'until nc -z mysql-service 3306; do echo "Waiting for MySQL..."; sleep 3; done']
       containers:
         - name: shop-ecommerce
           image: {{.Values.image}}
@@ -53,11 +58,18 @@ spec:
             limits:
               cpu: 500m
               memory: 512Mi
+          # Startup probe — gives app time to boot (up to 90s)
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            failureThreshold: 18
           readinessProbe:
             httpGet:
               path: /health
               port: 80
-            initialDelaySeconds: 15
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 3
@@ -65,12 +77,11 @@ spec:
             httpGet:
               path: /health
               port: 80
-            initialDelaySeconds: 30
             periodSeconds: 15
             timeoutSeconds: 5
             failureThreshold: 3
           lifecycle:
             preStop:
               exec:
-                command: ["/bin/sh", "-c", "nginx -s quit && sleep 5"]
+                command: ["/bin/sh", "-c", "supervisorctl stop all && sleep 5"]
       terminationGracePeriodSeconds: 30
