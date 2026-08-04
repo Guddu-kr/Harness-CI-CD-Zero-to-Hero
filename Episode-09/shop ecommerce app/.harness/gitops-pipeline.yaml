@@ -96,7 +96,7 @@ pipeline:
             environmentRef: production # ← CHANGE: your environment ID
             deployToAll: false
             gitOpsClusters:
-              - identifier: shopcluster # ← CHANGE: your GitOps cluster ID
+              - identifier: incluster # ← CHANGE: your GitOps cluster ID
                 agentIdentifier: gitopsagent # ← CHANGE: your GitOps agent ID
           execution:
             steps:

@@ -289,7 +289,7 @@ helm install argocd gitops-agent/gitops-helm --values override.yaml --namespace 
 2. Go to **GitOps Clusters** tab
 3. Click **+ Select Cluster(s)**
 4. Select the GitOps cluster from the agent installed in Step 4
-   - Identifier: `shopcluster`
+   - Identifier: `incluster`
    - Agent: `gitopsagent`
 
 > **Key difference from CD (Episodes 6-8):** In GitOps, there is NO Infrastructure Definition. Instead, you link GitOps Clusters directly to the Environment.
