@@ -192,6 +192,13 @@ EOF
 
 ---
 
+**Verify permissions applied:**
+```bash
+kubectl get clusterrolebinding harness-delegate-binding
+kubectl auth can-i create deployments --as=system:serviceaccount:harness-delegate-ng:default -n shop-ecommerce
+```
+> Should output: `yes`
+
 ## Step 3: Create K8s Connector (k8sdelegate)
 
 1. Go to **Project Settings → Connectors → + New Connector**
@@ -317,17 +324,49 @@ helm install argocd gitops-agent/gitops-helm --values override.yaml --namespace 
 
 ## Step 8: Configure Slack Notifications
 
+### Step 8.1: Create Slack App + Bot Token
+
 1. Open: **https://api.slack.com/apps**
 2. Click **Create New App** → **From scratch**
 3. App Name: `Harness Notifications`, Workspace: select yours → **Create App**
-4. Left sidebar → **Incoming Webhooks** → Toggle **ON**
-5. Click **Add New Webhook to Workspace**
-6. Select channel (e.g., `#deployments`) → **Allow**
-7. Copy the **Webhook URL** (starts with `https://hooks.slack.com/services/...`)
-8. In Harness → **Project Settings → Secrets → + New Secret → Text**
-   - Secret ID: `slack_webhook_url`
-   - Value: paste the webhook URL
-   - Click **Save**
+4. Left sidebar → **OAuth & Permissions**
+5. Under **Bot Token Scopes** → Add these scopes:
+   - `chat:write` (send messages)
+   - `chat:write.public` (send to any public channel)
+6. Scroll up → Click **Install to Workspace** → **Allow**
+7. Copy the **Bot User OAuth Token** (starts with `xoxb-...`)
+8. Left sidebar → **Incoming Webhooks** → Toggle **ON**
+9. Click **Add New Webhook to Workspace** → Select channel (e.g., `#deployments`) → **Allow**
+10. Copy the **Webhook URL** (starts with `https://hooks.slack.com/services/...`)
+
+### Step 8.2: Create Slack Connector in Harness (Project Level)
+
+1. Go to **Project Settings** → **Connectors** → **+ New Connector**
+2. Under **Communication Tools** → Select **Slack**
+3. **Screen 1 (Overview):**
+   - Name: `slack-notifications`
+4. **Screen 2 (Authorization):**
+   - Connection Mode: **Bot User Token**
+   - Slack Bot User Token: Click **Create or Select a Secret** → **+ New Secret**
+     - Secret Name: `slack_bot_token`
+     - Value: paste your Slack Bot Token (from Step 8.1: `xoxb-...`)
+     - Save
+   - Select the secret `slack_bot_token`
+5. **Screen 3 (Select Connectivity Mode):**
+   - Select: **Connect through Harness Platform**
+6. **Screen 4 (Connection Test):**
+   - Click **Finish** → ✅ Success
+
+### Step 8.3: Store Webhook as Secret (for pipeline notifications)
+
+1. Go to **Project Settings** → **Secrets** → **+ New Secret** → **Text**
+2. Secret ID: `slack_webhook_url`
+3. Value: paste the same webhook URL
+4. Click **Save**
+
+> **Why both connector AND secret?**
+> - **Connector** = used by Harness Notification Rules (Account/Project level alerts)
+> - **Secret** = used in pipeline YAML `notificationRules` section (`<+secrets.getValue("slack_webhook_url")>`)
 
 ---
 
@@ -347,7 +386,6 @@ helm install argocd gitops-agent/gitops-helm --values override.yaml --namespace 
 | `shop_mail_host` | `smtp.gmail.com` |
 | `shop_mail_username` | `shopecommerce.notify@gmail.com` |
 | `shop_mail_password` | `abcd efgh ijkl mnop` |
-| `slack_webhook_url` | (from Step 8) |
 
 ---
 
