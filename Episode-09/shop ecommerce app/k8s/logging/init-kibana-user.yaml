@@ -1,7 +1,7 @@
 # ============================================
 # Init Job: Sets kibana_system password + creates data view
 # Runs AFTER Elasticsearch is ready
-# After this: Kibana login works + shows logs immediately
+# After this: Kibana login works with elastic / HarnessEFK@2026
 # ============================================
 apiVersion: batch/v1
 kind: Job
@@ -10,6 +10,7 @@ metadata:
   namespace: logging
 spec:
   backoffLimit: 5
+  activeDeadlineSeconds: 300
   template:
     spec:
       restartPolicy: OnFailure
@@ -32,10 +33,14 @@ spec:
                 -d "{\"password\":\"${KIBANA_SYSTEM_PASSWORD}\"}"
 
               echo ""
-              echo "Waiting for Kibana to be ready..."
-              until curl -s http://kibana:5601/api/status | grep -q '"overall"'; do
-                sleep 10
-              done
+              echo "Verifying elastic user can authenticate..."
+              RESULT=$(curl -s -o /dev/null -w "%{http_code}" -u elastic:${ELASTIC_PASSWORD} http://elasticsearch:9200/)
+              echo "Auth test HTTP code: $RESULT"
+
+              if [ "$RESULT" != "200" ]; then
+                echo "ERROR: elastic user authentication failed!"
+                exit 1
+              fi
 
               echo "Creating data view (index pattern) for k8s-logs-*..."
               curl -s -X POST -u elastic:${ELASTIC_PASSWORD} \
@@ -48,21 +53,10 @@ spec:
                     "timeFieldName": "@timestamp",
                     "name": "Kubernetes Logs"
                   }
-                }' || echo "Data view may already exist"
+                }' 2>/dev/null || echo "Data view may already exist"
 
               echo ""
-              echo "Setting as default data view..."
-              curl -s -X POST -u elastic:${ELASTIC_PASSWORD} \
-                -H "Content-Type: application/json" \
-                -H "kbn-xsrf: true" \
-                http://kibana:5601/api/data_views/default \
-                -d '{
-                  "data_view_id": "k8s-logs-*",
-                  "force": true
-                }' || echo "Default already set"
-
-              echo ""
-              echo "Done! Kibana ready with data view."
+              echo "Done! Login with: elastic / ${ELASTIC_PASSWORD}"
           env:
             - name: ELASTIC_PASSWORD
               valueFrom:

@@ -139,3 +139,103 @@ pipeline:
                       echo ""
                       echo "  3. JAEGER:   http://$JAEGER"
                       echo "=============================================="
+
+    # ============================================
+    # STAGE 2: Verify All Observability Resources
+    # Checks ArgoCD apps, pods, and services across all namespaces
+    # ============================================
+    - stage:
+        name: verify-observability
+        identifier: verify_observability
+        description: "Verify all monitoring, logging, and tracing resources are running"
+        type: CI
+        spec:
+          cloneCodebase: false
+          infrastructure:
+            type: KubernetesDirect
+            spec:
+              connectorRef: k8sdelegate
+              namespace: harness-delegate-ng
+              automountServiceAccountToken: true
+              os: Linux
+          execution:
+            steps:
+              # Step 1: Check ArgoCD applications status
+              - step:
+                  type: Run
+                  name: Check ArgoCD Apps
+                  identifier: check_argocd_apps
+                  spec:
+                    connectorRef: dockerhub
+                    shell: Sh
+                    image: bitnami/kubectl:latest
+                    command: |-
+                      echo "=== ArgoCD Applications ==="
+                      kubectl get applications -n gitops
+
+              # Step 2: Check all pods in monitoring, logging, tracing
+              - step:
+                  type: Run
+                  name: Check All Pods
+                  identifier: check_all_pods
+                  spec:
+                    connectorRef: dockerhub
+                    shell: Sh
+                    image: bitnami/kubectl:latest
+                    command: |-
+                      echo "=== Monitoring Pods ==="
+                      kubectl get pods -n monitoring
+                      echo ""
+                      echo "=== Logging Pods ==="
+                      kubectl get pods -n logging
+                      echo ""
+                      echo "=== Tracing Pods ==="
+                      kubectl get pods -n tracing
+
+              # Step 3: Check all services (LoadBalancer URLs)
+              - step:
+                  type: Run
+                  name: Check All Services
+                  identifier: check_all_services
+                  spec:
+                    connectorRef: dockerhub
+                    shell: Sh
+                    image: bitnami/kubectl:latest
+                    command: |-
+                      echo "=== Monitoring Services ==="
+                      kubectl get svc -n monitoring
+                      echo ""
+                      echo "=== Logging Services ==="
+                      kubectl get svc -n logging
+                      echo ""
+                      echo "=== Tracing Services ==="
+                      kubectl get svc -n tracing
+                      echo ""
+                      echo "=== LoadBalancer URLs ==="
+                      kubectl get svc grafana -n monitoring
+                      kubectl get svc kibana -n logging
+                      kubectl get svc jaeger-query -n tracing
+
+              # Step 4: Health check — verify all critical pods are ready
+              - step:
+                  type: Run
+                  name: Health Check
+                  identifier: health_check
+                  spec:
+                    connectorRef: dockerhub
+                    shell: Sh
+                    image: bitnami/kubectl:latest
+                    command: |-
+                      echo "=== Health Check: Waiting for all pods to be ready ==="
+                      kubectl wait --for=condition=ready pod -l app=grafana -n monitoring --timeout=120s
+                      echo "Grafana: HEALTHY"
+                      kubectl wait --for=condition=ready pod -l app=prometheus -n monitoring --timeout=120s
+                      echo "Prometheus: HEALTHY"
+                      kubectl wait --for=condition=ready pod -l app=elasticsearch -n logging --timeout=120s
+                      echo "Elasticsearch: HEALTHY"
+                      kubectl wait --for=condition=ready pod -l app=kibana -n logging --timeout=120s
+                      echo "Kibana: HEALTHY"
+                      kubectl wait --for=condition=ready pod -l app=jaeger -n tracing --timeout=120s
+                      echo "Jaeger: HEALTHY"
+                      echo ""
+                      echo "=== ALL OBSERVABILITY SERVICES HEALTHY ==="
