@@ -389,7 +389,11 @@ helm install argocd gitops-agent/gitops-helm --values override.yaml --namespace 
 
 ---
 
-## Step 10: Create GitOps Application
+## Step 10: Create GitOps Application (Manual — BEFORE importing pipeline)
+
+> **Important:** Create this application MANUALLY in the UI first. The pipeline does NOT create the application — it only UPDATES the image tag in an existing application. The order is:
+> 1. Create Application (this step) → ArgoCD syncs current state from Git
+> 2. Import pipeline (Step 12) → Pipeline builds new image → updates values.yaml → ArgoCD syncs new version
 
 1. Go to **Harness → GitOps → Applications**
 2. Click **+ New Application**
@@ -402,10 +406,13 @@ helm install argocd gitops-agent/gitops-helm --values override.yaml --namespace 
    - **Environment:** Select `production` (created in Step 7)
    - Click **Continue**
 4. **Sync Policy:**
-   - Select **Automatic**
+   - Select **Manual** (NOT Automatic yet — image doesn't exist in ECR until first pipeline run)
    - Check **Auto-Create Namespace**
    - Leave all other options unchecked
    - Click **Continue**
+
+> **After first successful pipeline run (Step 13):** Come back here and change Sync Policy to **Automatic**. Then future Git changes will auto-deploy without running the pipeline.
+> - Go to GitOps → Applications → `shop-ecommerce` → App Details → Sync Policy → Enable **Auto-Sync**
 5. **Source:**
    - Repository: Select from Step 5
    - Path: `Episode-09/shop ecommerce app/k8s/`
