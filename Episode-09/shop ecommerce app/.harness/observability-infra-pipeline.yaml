@@ -46,8 +46,10 @@ pipeline:
                     shell: Sh
                     image: bitnami/kubectl:latest
                     command: |-
+                      cd /harness
+
                       # Create StorageClass (needed by Elasticsearch + Jaeger PVCs)
-                      kubectl apply -f "Episode-09/shop ecommerce app/k8s/storageclass.yaml"
+                      kubectl apply -f "Episode-09/shop ecommerce app/k8s/templates/storageclass.yaml"
 
                       # Apply monitoring files that have {{ }} syntax (ArgoCD plugin can't handle them)
                       kubectl create namespace monitoring 2>/dev/null || true
