@@ -18,7 +18,8 @@ pipeline:
         build: <+input>
   stages:
     # ============================================
-    # STAGE 1: Build & Push to ECR
+    # STAGE 1: Build & Push to ECR (CI — runs on K8s delegate)
+    # Builds Laravel Docker image, pushes to ECR, creates K8s secrets
     # ============================================
     - stage:
         name: build-and-push
@@ -37,6 +38,7 @@ pipeline:
           # NOTE: KubernetesDirect needs connectorRef on every Run step (unlike Harness Cloud)
           execution:
             steps:
+              # Step 1: Creates ECR repository if it doesn't exist (idempotent)
               - step:
                   type: Run
                   name: Create ECR Repo
@@ -52,6 +54,7 @@ pipeline:
                     command: |-
                       aws ecr create-repository --repository-name shop-ecommerce --region <+variable.aws_region> 2>/dev/null || echo "Repository already exists"
 
+              # Step 2: Builds Docker image from Dockerfile and pushes to ECR with version tag
               - step:
                   type: BuildAndPushECR
                   name: Build and Push to ECR
@@ -67,7 +70,7 @@ pipeline:
                     dockerfile: "Episode-09/shop ecommerce app/Dockerfile"
                     context: "Episode-09/shop ecommerce app"
 
-              # Create K8s Secret (Harness resolves secrets on free plan via delegate)
+              # Step 3: Creates K8s secret with app credentials (Harness resolves secrets via delegate)
               - step:
                   type: Run
                   name: Create App Secrets
@@ -101,6 +104,7 @@ pipeline:
 
     # ============================================
     # STAGE 2: GitOps Deploy (PR → Approve → Merge → Sync → Verify)
+    # Pipeline updates Git, ArgoCD agent syncs cluster — no direct kubectl apply
     # ============================================
     - stage:
         name: gitops-deploy
@@ -132,6 +136,7 @@ pipeline:
                 agentIdentifier: gitopsagent # ← CHANGE: your GitOps agent ID
           execution:
             steps:
+              # Step 1: Updates image tag in values.yaml, creates a PR branch, commits, pushes, and opens a Pull Request
               - step:
                   type: GitOpsUpdateReleaseRepo
                   name: Update Release Repo
@@ -144,6 +149,7 @@ pipeline:
                         value: <+variable.aws_account_id>.dkr.ecr.<+variable.aws_region>.amazonaws.com/shop-ecommerce:v<+pipeline.sequenceId>
                     prTitle: "Deploy shop-ecommerce build #<+pipeline.sequenceId>"
 
+              # Step 2: Pipeline pauses — human reviews the PR and approves before merge
               - step:
                   type: HarnessApproval
                   name: Approve Deployment
@@ -160,6 +166,7 @@ pipeline:
                       disallowPipelineExecutor: false
                     approverInputs: []
 
+              # Step 3: Merges the PR into main branch (source branch auto-deleted)
               - step:
                   type: MergePR
                   name: Merge PR
@@ -169,6 +176,7 @@ pipeline:
                     deleteSourceBranch: true
                     variables: []
 
+              # Step 4: Triggers ArgoCD to sync NOW (instead of waiting 3-min poll interval)
               - step:
                   type: GitOpsSync
                   name: Sync Application
@@ -192,7 +200,27 @@ pipeline:
                       replaceResources: false
                       prunePropagationPolicy: foreground
 
+              # Step 5: Returns real-time app status (Synced/Healthy/Degraded) as JSON output
+              - step:
+                  type: GitOpsGetAppDetails
+                  name: Get App Status
+                  identifier: get_app_status
+                  timeout: 5m
+                  spec:
+                    applicationsList:
+                      - applicationName: shop-ecommerce # ← CHANGE: your GitOps app name
+                        agentId: gitopsagent # ← CHANGE: your agent ID
+
             rollbackSteps:
+              # Rollback Step 1: Reverts the merged PR (creates a new revert commit in Git)
+              - step:
+                  type: GitOpsRevertPR
+                  name: Revert PR
+                  identifier: revert_pr
+                  timeout: 10m
+                  spec: {}
+
+              # Rollback Step 2: Syncs ArgoCD to the reverted state (applies previous manifests)
               - step:
                   type: GitOpsSync
                   name: Rollback Sync

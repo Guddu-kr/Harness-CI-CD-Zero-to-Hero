@@ -6,55 +6,74 @@
 ┌──────────────────────────────────────────────────────────────────┐
 │  HARNESS CI + GITOPS PIPELINE                                     │
 │                                                                    │
-│  Stage 1: Build & Push (CI)                                       │
-│  ┌────────────┐  ┌──────────┐  ┌──────────────────────┐          │
-│  │ Composer   │→ │ PHPUnit  │→ │ BuildAndPushECR      │          │
-│  │ Install    │  │ Tests    │  │ (OIDC, tag: seqId)   │          │
-│  └────────────┘  └──────────┘  └──────────────────────┘          │
+│  Stage 1: Build & Push (CI — runs on K8s delegate)                │
+│  Builds Laravel Docker image, pushes to ECR, creates K8s secrets  │
+│  ┌────────────┐  ┌──────────────────────┐  ┌──────────────────┐  │
+│  │ Create ECR │→ │ BuildAndPushECR      │→ │ Create K8s       │  │
+│  │ Repo       │  │ (OIDC, tag: v#)     │  │ Secrets (kubectl)│  │
+│  └────────────┘  └──────────────────────┘  └──────────────────┘  │
 │                                                                    │
 │  Stage 2: GitOps Deploy (CD — gitOpsEnabled: true)                │
+│  Pipeline updates Git, ArgoCD agent syncs cluster                 │
 │  ┌──────────────────┐  ┌──────────┐  ┌─────────┐  ┌──────────┐  │
-│  │ UpdateReleaseRepo│→ │ Approval │→ │MergePR  │→ │GitOpsSync│  │
-│  │ (update values,  │  │ (human)  │  │(merge to│  │(ArgoCD   │  │
-│  │  create PR)      │  │          │  │ main)   │  │ syncs)   │  │
+│  │UpdateReleaseRepo │→ │ Approval │→ │MergePR  │→ │GitOpsSync│  │
+│  │(update values,   │  │ (human   │  │(merge to│  │(ArgoCD   │  │
+│  │ create PR)       │  │  review) │  │ main)   │  │ syncs)   │  │
 │  └──────────────────┘  └──────────┘  └─────────┘  └──────────┘  │
-│         ↓                                                ↓        │
-│  ┌──────────────────────┐                    ┌──────────────────┐ │
-│  │ Harness Verify (CV)  │←───── after sync ──│ Compare metrics  │ │
-│  └──────────────────────┘                    └──────────────────┘ │
-│         ↓ (if verify fails)                                       │
-│  ┌──────────────────────┐                                         │
-│  │ Rollback GitOpsSync  │                                         │
-│  └──────────────────────┘                                         │
+│         │                                                │        │
+│         ▼                                                ▼        │
+│  ┌──────────────────┐                    ┌──────────────────────┐ │
+│  │ GetAppDetails    │                    │ App Status: Synced ✅│ │
+│  │ (verify healthy) │                    │ Healthy ✅           │ │
+│  └──────────────────┘                    └──────────────────────┘ │
+│                                                                    │
+│  Rollback (auto on failure):                                      │
+│  ┌──────────────────┐  ┌──────────────────────┐                  │
+│  │ RevertPR         │→ │ GitOpsSync (rollback) │                  │
+│  │ (revert commit)  │  │ (sync to old state)   │                  │
+│  └──────────────────┘  └──────────────────────┘                  │
 │                                                                    │
 ├──────────────────────────────────────────────────────────────────┤
-│  GITOPS AGENT (in EKS cluster)                                    │
+│  GITOPS AGENT (in EKS cluster, namespace: gitops)                 │
 │                                                                    │
 │  Watches: GitHub repo → Episode-09/shop ecommerce app/k8s/       │
 │  Action:  Auto-sync manifests to cluster after PR merged          │
-│  Self-Heal: Reverts any manual drift                              │
+│  Self-Heal: Reverts any manual drift (delete pod → recreated)     │
 │                                                                    │
 ├──────────────────────────────────────────────────────────────────┤
-│  OBSERVABILITY STACK (in monitoring namespace)                    │
+│  OBSERVABILITY STACK (deployed via ArgoCD App-of-Apps)            │
 │                                                                    │
 │  Prometheus → Scrapes /nginx-status every 15s                     │
 │  Grafana    → Dashboards (CPU, Memory, Requests, Latency)        │
-│  Alerts     → Slack/Email on: HighErrorRate, PodCrash, MySQLDown │
+│  EFK        → Elasticsearch + Fluentd + Kibana (logs)            │
+│  Jaeger     → Distributed tracing (OpenTelemetry)                │
+│  Alerts     → Slack on: HighErrorRate, PodCrash, MySQLDown       │
+│                                                                    │
+├──────────────────────────────────────────────────────────────────┤
+│  NOTIFICATIONS                                                    │
+│                                                                    │
+│  Slack: Pipeline success/failure + alert firing                   │
 │                                                                    │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
-### Harness GitOps Pipeline Steps (from [official docs](https://developer.harness.io/docs/continuous-delivery/gitops/pr-pipelines/gitops-pipeline-steps/))
+### Pipeline Steps Explained
 
-| Step Type | Purpose |
-|-----------|---------|
-| `GitOpsUpdateReleaseRepo` | Fetches values.yaml, updates variables (image tag), commits, pushes, and creates a PR |
-| `HarnessApproval` | Human approval before merging PR to main |
-| `MergePR` | Merges the PR created by UpdateReleaseRepo |
-| `GitOpsSync` | Triggers ArgoCD sync of the application (applies merged manifests to cluster) |
-| `Verify` | Continuous Verification — compares pre/post deployment metrics |
-
-Source: [harness-community/Gitops-Samples](https://github.com/harness-community/Gitops-Samples)
+| # | Step | Type | What It Does |
+|---|------|------|-------------|
+| **Stage 1** | | **CI** | **Builds image, pushes ECR, creates secrets** |
+| 1 | Create ECR Repo | Run | Creates ECR repository if not exists |
+| 2 | Build and Push to ECR | BuildAndPushECR | Builds Docker image, pushes with tag v# |
+| 3 | Create App Secrets | Run | Creates K8s secret with app credentials via kubectl |
+| **Stage 2** | | **GitOps CD** | **Updates Git, ArgoCD syncs cluster** |
+| 4 | Update Release Repo | GitOpsUpdateReleaseRepo | Updates image tag in values.yaml, creates PR |
+| 5 | Approve Deployment | HarnessApproval | Human reviews PR and approves |
+| 6 | Merge PR | MergePR | Merges PR into main, deletes source branch |
+| 7 | Sync Application | GitOpsSync | Triggers ArgoCD to sync NOW |
+| 8 | Get App Status | GitOpsGetAppDetails | Returns app health (Synced/Healthy/Degraded) |
+| **Rollback** | | **Auto on failure** | **Reverts Git + syncs to old state** |
+| R1 | Revert PR | GitOpsRevertPR | Creates revert commit in Git |
+| R2 | Rollback Sync | GitOpsSync | Syncs ArgoCD to reverted state |
 
 ---
 
