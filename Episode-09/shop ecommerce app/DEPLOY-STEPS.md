@@ -411,8 +411,12 @@ helm install argocd gitops-agent/gitops-helm --values override.yaml --namespace 
    - Leave all other options unchecked
    - Click **Continue**
 
-> **After first successful pipeline run (Step 13):** Come back here and change Sync Policy to **Automatic**. Then future Git changes will auto-deploy without running the pipeline.
-> - Go to GitOps → Applications → `shop-ecommerce` → App Details → Sync Policy → Enable **Auto-Sync**
+> **After first successful pipeline run (Step 13):** Come back here and enable Auto-Sync:
+> 1. Go to **GitOps → Applications → `shop-ecommerce`**
+> 2. Click **"App Details"** tab
+> 3. Find **"Sync Policy"** section
+> 4. Toggle **"Automated"** switch → ON
+> 5. Now future Git changes will auto-deploy without running the pipeline
 5. **Source:**
    - Repository: Select from Step 5
    - Path: `Episode-09/shop ecommerce app/k8s/`
