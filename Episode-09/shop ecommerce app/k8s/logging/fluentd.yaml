@@ -78,11 +78,11 @@ spec:
                   key: ELASTIC_PASSWORD
           resources:
             requests:
-              cpu: 100m
-              memory: 200Mi
+              cpu: 50m
+              memory: 100Mi
             limits:
-              cpu: 300m
-              memory: 512Mi
+              cpu: 200m
+              memory: 256Mi
           volumeMounts:
             - name: varlog
               mountPath: /var/log
