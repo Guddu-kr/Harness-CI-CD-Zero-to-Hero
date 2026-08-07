@@ -49,8 +49,6 @@ spec:
               mountPath: /etc/grafana/provisioning/dashboards
             - name: grafana-dashboards
               mountPath: /var/lib/grafana/dashboards
-            - name: grafana-storage
-              mountPath: /var/lib/grafana
       volumes:
         - name: grafana-datasources
           configMap:
@@ -61,21 +59,3 @@ spec:
         - name: grafana-dashboards
           configMap:
             name: grafana-dashboards-k8s
-        - name: grafana-storage
-          persistentVolumeClaim:
-            claimName: grafana-pvc
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: grafana-pvc
-  namespace: monitoring
-  labels:
-    app: grafana
-spec:
-  accessModes:
-    - ReadWriteOnce
-  storageClassName: auto-ebs-sc
-  resources:
-    requests:
-      storage: 5Gi
