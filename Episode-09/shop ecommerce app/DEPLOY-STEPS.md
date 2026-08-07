@@ -222,16 +222,12 @@ kubectl auth can-i create deployments --as=system:serviceaccount:harness-delegat
    - **Name:** `gitopsagent`
    - **GitOps Operator:** Argo (default)
    - **Namespace:** `gitops`
-   - **Namespaced:** unchecked
-   - **Skip Crds:** unchecked
-   - **High Availability:** OFF
 5. Under **Advanced** (scroll down):
    - **Enable Helm Secrets Path Traversal:** ✅ Check (allows accessing secrets in Helm values from different paths)
    - **Enable ArgoCD Harness Plugin:** ✅ Check (required for `<+secrets.getValue()>` resolution)
    - Leave other Advanced settings empty
-6. **Certificate / Proxy settings:** leave empty → Click **Continue**
-7. **Disaster Recovery:** OFF → Click **Continue**
-8. Harness shows **Install Agent** screen (Helm Chart tab):
+6.  Click **Continue**
+7. Harness shows **Install Agent** screen (Helm Chart tab):
    - Click **"Download Values Yaml"** → saves `override.yaml` to your laptop
    - Transfer to Bastion: copy content → `nano override.yaml` → paste → save (Ctrl+X, Y, Enter)
    - On Bastion, run:
