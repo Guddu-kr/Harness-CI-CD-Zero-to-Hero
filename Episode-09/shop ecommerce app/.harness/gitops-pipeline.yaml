@@ -211,50 +211,23 @@ pipeline:
                       - applicationName: shop-ecommerce # ← CHANGE: your GitOps app name
                         agentId: gitopsagent # ← CHANGE: your agent ID
 
-              # Step 6: Wait for pods to be ready after sync
+              # Step 6: Continuous Verification — compares pre/post deployment metrics from Prometheus
+              # Auto-triggers rollback if error rate or latency degrades
               - step:
-                  type: Run
-                  name: Health Check
-                  identifier: health_check
+                  type: Verify
+                  name: Verify Deployment
+                  identifier: verify_deployment
+                  timeout: 15m
                   spec:
-                    connectorRef: dockerhub
-                    shell: Sh
-                    image: bitnami/kubectl:latest
-                    command: |-
-                      echo "=== Waiting for app pods to be ready ==="
-                      kubectl wait --for=condition=ready pod -l app=shop-ecommerce -n shop-ecommerce --timeout=180s && echo "App: HEALTHY" || (echo "App: FAILED - pods not ready" && exit 1)
-                      echo ""
-                      echo "=== Pod Status ==="
-                      kubectl get pods -n shop-ecommerce
-                      echo ""
-                      echo "=== Service (LoadBalancer URL) ==="
-                      kubectl get svc -n shop-ecommerce
-                  timeout: 5m
-
-              # Step 7: Verify app responds to HTTP requests
-              - step:
-                  type: Run
-                  name: Verify App Responds
-                  identifier: verify_app
-                  spec:
-                    connectorRef: dockerhub
-                    shell: Sh
-                    image: curlimages/curl:latest
-                    command: |-
-                      echo "=== Checking app health endpoint ==="
-                      APP_URL=$(kubectl get svc shop-ecommerce -n shop-ecommerce -o jsonpath='{.spec.clusterIP}' 2>/dev/null || echo "")
-                      if [ -z "$APP_URL" ]; then
-                        echo "Service not found, skipping HTTP check"
-                        exit 0
-                      fi
-                      HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://$APP_URL/health --max-time 10 2>/dev/null || echo "000")
-                      echo "HTTP Response Code: $HTTP_CODE"
-                      if [ "$HTTP_CODE" = "200" ]; then
-                        echo "Health Check PASSED"
-                      else
-                        echo "Health Check WARNING: Got $HTTP_CODE (app may still be starting)"
-                      fi
-                  timeout: 3m
+                    isMultiServicesOrEnvs: false
+                    type: Rolling
+                    monitoredService:
+                      type: Default
+                      spec: {}
+                    spec:
+                      sensitivity: MEDIUM
+                      duration: 5m
+                      deploymentTag: <+pipeline.sequenceId>
 
             # ============================================
             # ROLLBACK STEPS (auto-triggered on failure)

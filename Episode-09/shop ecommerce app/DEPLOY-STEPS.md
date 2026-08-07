@@ -80,24 +80,19 @@
 ### How GitOps Rollback Works
 
 ```
-NORMAL FLOW (success):
-  UpdateReleaseRepo (v3→v4) → Approve → MergePR → GitOpsSync → GetAppDetails ✅
-  Result: App running v4
 
-IF SYNC OR HEALTH CHECK FAILS (auto-triggers rollbackSteps):
-  RevertPR (reverts v4 commit) → MergePR (merge revert) → GitOpsSync (sync)
-  Result: values.yaml back to v3 → ArgoCD deploys v3 → App restored ✅
 
-GIT HISTORY:
-  commit abc123: "Deploy shop-ecommerce build #4"     ← UpdateReleaseRepo
-  commit def456: "Revert: Deploy shop-ecommerce #4"   ← RevertPR (rollback)
-
-KEY POINTS:
-  - Everything is tracked in Git (full audit trail)
-  - Rollback = new commit (not deleting history)
-  - ArgoCD always matches Git state
-  - No manual intervention needed
-```
+values.yaml BEFORE pipeline: image: shop-ecommerce:v3 (working)
+                   ↓
+Pipeline runs → UpdateReleaseRepo changes to: image: shop-ecommerce:v4
+                   ↓
+MergePR merges → GitOpsSync deploys v4 → v4 CRASHES (health check fails)
+                   ↓
+failureStrategy triggers rollbackSteps:
+                   ↓
+RevertPR → creates commit that reverts back to: image: shop-ecommerce:v3
+MergePR → merges revert
+GitOpsSync → ArgoCD deploys v3 again → app is healthy ✅
 
 ---
 
@@ -478,7 +473,58 @@ kubectl get svc jaeger-query -n tracing
 ```
 ---
 
-## Step 12: Import Pipeline from Git
+## Step 12: Create Prometheus Connector + Monitored Service
+
+### Step 12.1: Create Prometheus Connector
+
+1. Go to **Project Settings** → **Connectors** → **+ New Connector**
+2. Select: **Monitoring and Logging Systems** → **Prometheus**
+3. **Screen 1 (Overview):**
+   - Name: `prometheus`
+4. **Screen 2 (Credentials):**
+   - URL: `http://prometheus.monitoring.svc.cluster.local:9090`
+   - Authentication: leave **empty** (no username, no password, no headers)
+5. **Screen 3 (Delegates Setup):**
+   - Select: **Connect only via Delegates with tag** → `eks-k8s-delegate`
+6. **Screen 4 (Connection Test):**
+   - Click **Finish** → ✅ Success
+
+### Step 12.2: Create Monitored Service
+
+1. Go to left sidebar → **Monitored Services** → **+ New Monitored Service**
+2. Fill in:
+   - **Service:** Select `shop-ecommerce`
+   - **Environment:** Select `production`
+   - **Type:** Application
+3. Click **Save**
+4. Inside the Monitored Service → **+ Add Health Source**
+5. Select: **Prometheus**
+6. Configure:
+   - Health Source Name: `prometheus-metrics`
+   - Connector: Select `prometheus`
+   - Feature: **Prometheus Metrics**
+7. **Metric Configuration:**
+   - **Metric 1 (Request Count):**
+     - Query: `sum(rate(nginx_http_requests_total{namespace="shop-ecommerce"}[5m]))`
+     - Metric Name: `request_rate`
+     - Category: Performance
+     - Thresholds: Higher is better
+   - **Metric 2 (Error Rate):**
+     - Query: `sum(rate(nginx_http_requests_total{namespace="shop-ecommerce",status=~"5.."}[5m]))`
+     - Metric Name: `error_rate`
+     - Category: Errors
+     - Thresholds: Lower is better
+8. Click **Submit** → Save
+
+> **How Verify step works in the pipeline:**
+> - After GitOpsSync deploys new version → Verify step monitors Prometheus for 5 minutes
+> - Compares current error rate vs baseline (previous deployment)
+> - If error rate increases significantly → Verify FAILS → rollback triggers
+> - If metrics are stable → Verify PASSES → pipeline succeeds
+
+---
+
+## Step 13: Import Pipeline from Git
 
 1. Go to **Pipelines → + Create Pipeline**
 2. Select **Import from Git**
@@ -487,20 +533,6 @@ kubectl get svc jaeger-query -n tracing
    - Repo: `Harness-CI-CD-Zero-to-Hero`
    - Branch: `master`
    - YAML Path: `Episode-09/shop ecommerce app/.harness/gitops-pipeline.yaml`
-
-> **Pipeline flow:**
-> - **Stage 1 (CI):** Build image → Push ECR → **Create K8s Secret** (Harness resolves via delegate)
-> - **Stage 2 (CD):** UpdateReleaseRepo → Approve → MergePR → GitOpsSync
->
-> **Secrets pattern (free plan):**
-> - Secrets created by pipeline step (`kubectl create secret`) — NOT by ArgoCD
-> - Deployment references pre-existing secret via `secretRef`
-> - On Enterprise plan: secrets resolve directly in values.yaml during ArgoCD sync
->
-> **After first pipeline run:**
-> - Secret exists on cluster (persists until deleted)
-> - Push code → ArgoCD auto-syncs within 3 min → app updates
-> - Pipeline only needed for: new Docker image OR secret rotation
 
 ---
 ```bash
@@ -533,93 +565,6 @@ kubectl get svc -n shop-ecommerce
 
 ```
 
-## Step 13: Run the Pipeline
-
-1. Click **Run Pipeline**
-2. Select branch: `main`
-3. Watch the stages:
-
-**Stage 1 (CI):**
-- Installs Composer dependencies
-- Runs PHPUnit tests
-- Builds Docker image and pushes to ECR with tag `#<sequenceId>`
-
-**Stage 2 (GitOps Deploy):**
-- **UpdateReleaseRepo:** Updates `image` in `values.yaml` to new ECR URL, creates a PR
-- **Approval:** Pipeline pauses — review the PR in GitHub, then approve in Harness
-- **MergePR:** Merges PR into `main` (source branch auto-deleted)
-- **GitOpsSync:** Triggers ArgoCD agent to sync — pulls merged `values.yaml`, applies manifests
-- **Verify:** Monitors Prometheus metrics for 10 minutes, comparing to baseline
-
-4. Check GitOps dashboard: Application shows **Synced ✅ Healthy ✅**
-5. Get LoadBalancer URL:
-   ```bash
-   kubectl get svc shop-ecommerce-service -n shop-ecommerce
-   ```
-6. Open `http://EXTERNAL-IP` in browser to see the ecommerce app running
-
-### What Happens Under the Hood
-
-```
-Pipeline runs → UpdateReleaseRepo creates PR with new image tag
-       ↓
-Human approves → MergePR merges to main
-       ↓
-GitOpsSync tells ArgoCD agent to sync NOW (vs waiting 3 min poll)
-       ↓
-ArgoCD detects values.yaml changed → renders templates → kubectl apply
-       ↓
-New pods start (rolling update: maxUnavailable: 0 = zero downtime)
-       ↓
-Verify step queries Prometheus: error_rate, latency, pod_restarts
-       ↓
-If healthy → Pipeline succeeds → Slack notification sent
-```
-
----
-
-## Step 14: Test GitOps Self-Heal
-
-```bash
-# Manually delete a pod (simulating drift)
-kubectl delete pod -l app=shop-ecommerce -n shop-ecommerce
-
-# Watch GitOps agent recreate it within seconds
-kubectl get pods -n shop-ecommerce -w
-```
-
-The GitOps agent detects the drift and reconciles back to the Git-defined state.
-
----
-
-## Step 15: Test Rollback
-
-```bash
-# Option 1: Revert Git commit
-git revert HEAD
-git push origin main
-# GitOps agent auto-syncs to previous state
-
-# Option 2: Manual sync to previous revision in Harness GitOps dashboard
-# Applications → shop-ecommerce → History → Rollback to revision
-```
-
----
-
-## Step 16: Access Grafana Dashboards
-
-```bash
-kubectl get svc grafana -n monitoring
-# Open: http://GRAFANA-LOADBALANCER-URL
-# Login: admin / admin123
-```
-
-Import recommended dashboards:
-- **Dashboard ID 6417** — Kubernetes Pods
-- **Dashboard ID 1860** — Node Exporter Full
-- **Dashboard ID 13332** — Nginx Ingress Controller
-
----
 
 ## Troubleshooting: Reset Observability Stack
 
@@ -689,22 +634,3 @@ aws ecr delete-repository --repository-name shop-ecommerce --region us-east-1 --
 | Notifications | Slack on pipeline and alert events |
 | Secret Injection | `<+secrets.getValue()>` resolved by GitOps Agent plugin |
 
-
-```
-Step 1:  Create EKS Cluster
-Step 2:  SSH + Install K8s Delegate
-Step 3:  Install GitOps Agent
-Step 4:  Create GitOps Repository
-Step 5:  Create GitOps Application
-Step 6:  Create Secrets
-Step 7:  Create Service (GitOps)
-Step 8:  Create Environment + GitOps Cluster
-Step 9:  Configure Slack
-Step 10: Install Observability Stack (pipeline — ArgoCD App-of-Apps)
-Step 11: Import App Pipeline
-Step 12: Run Pipeline
-Step 13: Test Self-Heal
-Step 14: Test Rollback
-Step 15: Access Grafana
-Step 16: Cleanup
-```
