@@ -29,6 +29,21 @@ spec:
         - name: wait-for-mysql
           image: busybox:1.36
           command: ['sh', '-c', 'until nc -z mysql-service 3306; do echo "Waiting for MySQL..."; sleep 3; done']
+        - name: run-migrations
+          image: {{.Values.image}}
+          command: ['sh', '-c', 'php artisan migrate --force 2>/dev/null || true']
+          envFrom:
+            - configMapRef:
+                name: shop-ecommerce-config
+            - secretRef:
+                name: shop-ecommerce-secrets
+          env:
+            - name: DB_HOST
+              value: "{{.Values.dbHost}}"
+            - name: DB_PORT
+              value: "{{.Values.dbPort}}"
+            - name: DB_DATABASE
+              value: "{{.Values.dbDatabase}}"
       containers:
         - name: shop-ecommerce
           image: {{.Values.image}}
