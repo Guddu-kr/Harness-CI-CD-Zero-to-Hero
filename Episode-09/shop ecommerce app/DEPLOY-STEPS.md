@@ -597,6 +597,25 @@ Import recommended dashboards:
 
 ---
 
+## Troubleshooting: Reset Observability Stack
+
+If observability apps are stuck (Progressing/Degraded), delete and recreate from scratch:
+
+```bash
+# Delete ArgoCD apps (cascades — deletes all pods/services)
+kubectl delete application monitoring logging tracing -n gitops
+
+# Delete namespaces (clean slate)
+kubectl delete namespace monitoring logging tracing --ignore-not-found
+
+# Wait for cleanup
+sleep 30
+```
+
+Then re-run the `episode9-observability-infra` pipeline in Harness — it recreates everything from latest Git.
+
+---
+
 ## Step 17: Cleanup
 
 ```bash
