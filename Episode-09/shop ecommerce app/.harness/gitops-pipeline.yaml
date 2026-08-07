@@ -249,8 +249,8 @@ pipeline:
                     applyOnly: false
                     forceApply: false
                     applicationsList:
-                      - applicationName: shop-ecommerce
-                        agentId: gitopsagent
+                      - applicationName: shop-ecommerce # ← CHANGE: your GitOps app name
+                        agentId: gitopsagent # ← CHANGE: your agent ID
                     retryStrategy: {}
                     retry: false
                     syncOptions:

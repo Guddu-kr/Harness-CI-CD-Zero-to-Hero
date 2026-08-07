@@ -28,10 +28,11 @@
 │  └──────────────────┘                    └──────────────────────┘ │
 │                                                                    │
 │  Rollback (auto on failure):                                      │
-│  ┌──────────────────┐  ┌──────────────────────┐                  │
-│  │ RevertPR         │→ │ GitOpsSync (rollback) │                  │
-│  │ (revert commit)  │  │ (sync to old state)   │                  │
-│  └──────────────────┘  └──────────────────────┘                  │
+│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐ │
+│  │ RevertPR         │→ │ MergePR (revert) │→ │ GitOpsSync       │ │
+│  │ (uses commitId   │  │ (merges revert   │  │ (ArgoCD deploys  │ │
+│  │  from step 4)    │  │  into main)      │  │  old version)    │ │
+│  └──────────────────┘  └──────────────────┘  └──────────────────┘ │
 │                                                                    │
 ├──────────────────────────────────────────────────────────────────┤
 │  GITOPS AGENT (in EKS cluster, namespace: gitops)                 │
@@ -69,11 +70,34 @@
 | 4 | Update Release Repo | GitOpsUpdateReleaseRepo | Updates image tag in values.yaml, creates PR |
 | 5 | Approve Deployment | HarnessApproval | Human reviews PR and approves |
 | 6 | Merge PR | MergePR | Merges PR into main, deletes source branch |
-| 7 | Sync Application | GitOpsSync | Triggers ArgoCD to sync NOW |
-| 8 | Get App Status | GitOpsGetAppDetails | Returns app health (Synced/Healthy/Degraded) |
-| **Rollback** | | **Auto on failure** | **Reverts Git + syncs to old state** |
-| R1 | Revert PR | GitOpsRevertPR | Creates revert commit in Git |
-| R2 | Rollback Sync | GitOpsSync | Syncs ArgoCD to reverted state |
+| 7 | Sync Application | GitOpsSync | Triggers ArgoCD to sync NOW (not wait 3 min poll) |
+| 8 | Get App Status | GitOpsGetAppDetails | Returns app health as JSON (Synced/Healthy/Degraded) |
+| **Rollback** | | **Auto on failure** | **Reverts Git + merges revert + syncs old state** |
+| R1 | Revert PR | RevertPR | Uses commitId from step 4 → creates revert commit → opens revert PR |
+| R2 | Merge Revert PR | MergePR | Merges the revert PR → main goes back to old image tag |
+| R3 | Rollback Sync | GitOpsSync | Forces ArgoCD sync → deploys previous version back |
+
+### How GitOps Rollback Works
+
+```
+NORMAL FLOW (success):
+  UpdateReleaseRepo (v3→v4) → Approve → MergePR → GitOpsSync → GetAppDetails ✅
+  Result: App running v4
+
+IF SYNC OR HEALTH CHECK FAILS (auto-triggers rollbackSteps):
+  RevertPR (reverts v4 commit) → MergePR (merge revert) → GitOpsSync (sync)
+  Result: values.yaml back to v3 → ArgoCD deploys v3 → App restored ✅
+
+GIT HISTORY:
+  commit abc123: "Deploy shop-ecommerce build #4"     ← UpdateReleaseRepo
+  commit def456: "Revert: Deploy shop-ecommerce #4"   ← RevertPR (rollback)
+
+KEY POINTS:
+  - Everything is tracked in Git (full audit trail)
+  - Rollback = new commit (not deleting history)
+  - ArgoCD always matches Git state
+  - No manual intervention needed
+```
 
 ---
 
