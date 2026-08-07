@@ -89,6 +89,9 @@ spec:
             - name: dockercontainers
               mountPath: /var/lib/docker/containers
               readOnly: true
+            - name: containerdlogs
+              mountPath: /var/log/pods
+              readOnly: true
       volumes:
         - name: varlog
           hostPath:
@@ -96,3 +99,6 @@ spec:
         - name: dockercontainers
           hostPath:
             path: /var/lib/docker/containers
+        - name: containerdlogs
+          hostPath:
+            path: /var/log/pods
