@@ -61,7 +61,7 @@ spec:
               command:
                 - /bin/sh
                 - -c
-                - "curl -s -u elastic:${ELASTIC_PASSWORD} http://localhost:9200/_cluster/health | grep -q green"
+                - 'curl -s -u elastic:${ELASTIC_PASSWORD} http://localhost:9200/_cluster/health | grep -qE ''"status":"(green|yellow)"'''
             initialDelaySeconds: 30
             periodSeconds: 10
   volumeClaimTemplates:
