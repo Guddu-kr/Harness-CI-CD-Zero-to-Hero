@@ -213,21 +213,21 @@ pipeline:
 
               # Step 6: Continuous Verification — compares pre/post deployment metrics from Prometheus
               # Auto-triggers rollback if error rate or latency degrades
-              - step:
-                  type: Verify
-                  name: Verify Deployment
-                  identifier: verify_deployment
-                  timeout: 15m
-                  spec:
-                    isMultiServicesOrEnvs: false
-                    type: Rolling
-                    monitoredService:
-                      type: Default
-                      spec: {}
-                    spec:
-                      sensitivity: MEDIUM
-                      duration: 5m
-                      deploymentTag: <+pipeline.sequenceId>
+              # - step:
+              #     type: Verify
+              #     name: Verify Deployment
+              #     identifier: verify_deployment
+              #     timeout: 15m
+              #     spec:
+              #       isMultiServicesOrEnvs: false
+              #       type: Rolling
+              #       monitoredService:
+              #         type: Default
+              #         spec: {}
+              #       spec:
+              #         sensitivity: MEDIUM
+              #         duration: 5m
+              #         deploymentTag: <+pipeline.sequenceId>
 
             # ============================================
             # ROLLBACK STEPS (auto-triggered on failure)

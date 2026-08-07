@@ -12,6 +12,8 @@ metadata:
     app: shop-ecommerce
   annotations:
     service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing
+    service.beta.kubernetes.io/aws-load-balancer-type: external
+    service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: ip
     prometheus.io/scrape: "true"
     prometheus.io/port: "80"
     prometheus.io/path: "/nginx-status"
