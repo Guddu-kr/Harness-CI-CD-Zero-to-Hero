@@ -44,7 +44,7 @@ COPY docker/nginx/nginx.conf /etc/nginx/nginx.conf
 COPY docker/nginx/default.conf /etc/nginx/http.d/default.conf
 
 # Configure Supervisor
-RUN mkdir -p /etc/supervisor/conf.d
+RUN mkdir -p /etc/supervisor/conf.d /var/log/supervisor
 COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
 # Set working directory
