@@ -13,6 +13,5 @@ phpunit.xml
 .editorconfig
 screenshots
 *.md
-docker
 .harness
 k8s
