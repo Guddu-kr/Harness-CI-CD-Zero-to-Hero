@@ -43,17 +43,19 @@ spec:
               fi
 
               echo "Creating data view (index pattern) for k8s-logs-*..."
-              curl -s -X POST -u elastic:${ELASTIC_PASSWORD} \
-                -H "Content-Type: application/json" \
-                -H "kbn-xsrf: true" \
-                http://kibana:5601/api/data_views/data_view \
-                -d '{
-                  "data_view": {
-                    "title": "k8s-logs-*",
-                    "timeFieldName": "@timestamp",
-                    "name": "Kubernetes Logs"
-                  }
-                }' 2>/dev/null || echo "Data view may already exist"
+              for i in 1 2 3 4 5; do
+                RESULT=$(curl -s -o /dev/null -w "%{http_code}" -X POST -u elastic:${ELASTIC_PASSWORD} \
+                  -H "Content-Type: application/json" \
+                  -H "kbn-xsrf: true" \
+                  http://kibana:5601/api/data_views/data_view \
+                  -d '{"data_view": {"title": "k8s-logs-*", "timeFieldName": "@timestamp", "name": "Kubernetes Logs"}}')
+                if [ "$RESULT" = "200" ] || [ "$RESULT" = "409" ]; then
+                  echo "Data view created (HTTP $RESULT)"
+                  break
+                fi
+                echo "Attempt $i failed (HTTP $RESULT), retrying in 10s..."
+                sleep 10
+              done
 
               echo ""
               echo "Done! Login with: elastic / ${ELASTIC_PASSWORD}"
