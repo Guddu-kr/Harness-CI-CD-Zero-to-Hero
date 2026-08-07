@@ -1,0 +1,26 @@
+# Node-level metrics dashboard
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards-nodes
+  namespace: monitoring
+  labels:
+    app: grafana
+data:
+  kubernetes-nodes.json: |
+    {
+      "title": "Kubernetes Nodes",
+      "uid": "k8s-nodes",
+      "schemaVersion": 30,
+      "tags": ["kubernetes", "nodes"],
+      "panels": [
+        {"title": "Node CPU Usage %", "type": "timeseries", "datasource": "Prometheus", "targets": [{"expr": "100 - (avg(rate(node_cpu_seconds_total{mode=\"idle\"}[5m])) by (instance) * 100)", "legendFormat": "{{instance}}"}], "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}},
+        {"title": "Node Memory Usage %", "type": "timeseries", "datasource": "Prometheus", "targets": [{"expr": "(1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100", "legendFormat": "{{instance}}"}], "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}},
+        {"title": "Node Disk Usage %", "type": "timeseries", "datasource": "Prometheus", "targets": [{"expr": "(1 - (node_filesystem_avail_bytes{mountpoint=\"/\"} / node_filesystem_size_bytes{mountpoint=\"/\"})) * 100", "legendFormat": "{{instance}}"}], "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}},
+        {"title": "Node Network Traffic (bytes/s)", "type": "timeseries", "datasource": "Prometheus", "targets": [{"expr": "rate(node_network_receive_bytes_total{device!=\"lo\"}[5m])", "legendFormat": "{{instance}} rx"}, {"expr": "rate(node_network_transmit_bytes_total{device!=\"lo\"}[5m])", "legendFormat": "{{instance}} tx"}], "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}},
+        {"title": "Node Load Average (1m)", "type": "timeseries", "datasource": "Prometheus", "targets": [{"expr": "node_load1", "legendFormat": "{{instance}}"}], "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16}},
+        {"title": "Disk I/O (reads/writes per second)", "type": "timeseries", "datasource": "Prometheus", "targets": [{"expr": "rate(node_disk_reads_completed_total[5m])", "legendFormat": "{{instance}} reads"}, {"expr": "rate(node_disk_writes_completed_total[5m])", "legendFormat": "{{instance}} writes"}], "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16}}
+      ],
+      "time": {"from": "now-1h", "to": "now"},
+      "refresh": "30s"
+    }

@@ -1,0 +1,27 @@
+# Pod-level metrics dashboard
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards-pods
+  namespace: monitoring
+  labels:
+    app: grafana
+data:
+  kubernetes-pods.json: |
+    {
+      "title": "Kubernetes Pods",
+      "uid": "k8s-pods",
+      "schemaVersion": 30,
+      "tags": ["kubernetes", "pods"],
+      "panels": [
+        {"title": "Pod CPU Usage (top 10)", "type": "timeseries", "datasource": "Prometheus", "targets": [{"expr": "topk(10, sum(rate(container_cpu_usage_seconds_total{container!=\"\"}[5m])) by (namespace, pod))", "legendFormat": "{{namespace}}/{{pod}}"}], "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}},
+        {"title": "Pod Memory Usage (top 10 MB)", "type": "timeseries", "datasource": "Prometheus", "targets": [{"expr": "topk(10, sum(container_memory_working_set_bytes{container!=\"\"}) by (namespace, pod)) / 1024 / 1024", "legendFormat": "{{namespace}}/{{pod}}"}], "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}},
+        {"title": "Pod Restart Count", "type": "timeseries", "datasource": "Prometheus", "targets": [{"expr": "sum(kube_pod_container_status_restarts_total) by (namespace, pod)", "legendFormat": "{{namespace}}/{{pod}}"}], "gridPos": {"h": 8, "w": 24, "x": 0, "y": 8}},
+        {"title": "Pods by Phase", "type": "piechart", "datasource": "Prometheus", "targets": [{"expr": "sum(kube_pod_status_phase) by (phase)", "legendFormat": "{{phase}}"}], "gridPos": {"h": 8, "w": 8, "x": 0, "y": 16}},
+        {"title": "Container Status (Running/Waiting/Terminated)", "type": "piechart", "datasource": "Prometheus", "targets": [{"expr": "sum(kube_pod_container_status_running)", "legendFormat": "Running"}, {"expr": "sum(kube_pod_container_status_waiting)", "legendFormat": "Waiting"}, {"expr": "sum(kube_pod_container_status_terminated)", "legendFormat": "Terminated"}], "gridPos": {"h": 8, "w": 8, "x": 8, "y": 16}},
+        {"title": "Pods Not Ready", "type": "table", "datasource": "Prometheus", "targets": [{"expr": "kube_pod_status_ready{condition=\"false\"}", "legendFormat": "{{namespace}}/{{pod}}", "format": "table", "instant": true}], "gridPos": {"h": 8, "w": 8, "x": 16, "y": 16}},
+        {"title": "Container CPU Throttling", "type": "timeseries", "datasource": "Prometheus", "targets": [{"expr": "sum(rate(container_cpu_cfs_throttled_seconds_total{container!=\"\"}[5m])) by (namespace, pod)", "legendFormat": "{{namespace}}/{{pod}}"}], "gridPos": {"h": 8, "w": 24, "x": 0, "y": 24}}
+      ],
+      "time": {"from": "now-1h", "to": "now"},
+      "refresh": "30s"
+    }

@@ -18,4 +18,4 @@ data:
         editable: true
         options:
           path: /var/lib/grafana/dashboards
-          foldersFromFilesStructure: false
+          foldersFromFilesStructure: true

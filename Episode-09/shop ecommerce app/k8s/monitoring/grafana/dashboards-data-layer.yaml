@@ -1,0 +1,42 @@
+# Data layer + Network + Jobs — production troubleshooting dashboards
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards-data-layer
+  namespace: monitoring
+  labels:
+    app: grafana
+data:
+  kubernetes-network.json: |
+    {
+      "title": "Network & DNS",
+      "uid": "k8s-network",
+      "schemaVersion": 30,
+      "tags": ["kubernetes", "network"],
+      "panels": [
+        {"title": "Network Errors (receive)", "type": "timeseries", "datasource": "Prometheus", "targets": [{"expr": "sum(rate(node_network_receive_errs_total[5m])) by (instance)", "legendFormat": "{{instance}}"}], "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}},
+        {"title": "Network Errors (transmit)", "type": "timeseries", "datasource": "Prometheus", "targets": [{"expr": "sum(rate(node_network_transmit_errs_total[5m])) by (instance)", "legendFormat": "{{instance}}"}], "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}},
+        {"title": "Network Packets Dropped", "type": "timeseries", "datasource": "Prometheus", "targets": [{"expr": "sum(rate(node_network_receive_drop_total[5m])) by (instance)", "legendFormat": "{{instance}} rx drop"}, {"expr": "sum(rate(node_network_transmit_drop_total[5m])) by (instance)", "legendFormat": "{{instance}} tx drop"}], "gridPos": {"h": 8, "w": 24, "x": 0, "y": 8}},
+        {"title": "CoreDNS Requests/sec", "type": "timeseries", "datasource": "Prometheus", "targets": [{"expr": "sum(rate(coredns_dns_requests_total[5m]))", "legendFormat": "DNS requests/s"}], "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16}},
+        {"title": "CoreDNS Response Latency (ms)", "type": "timeseries", "datasource": "Prometheus", "targets": [{"expr": "histogram_quantile(0.99, sum(rate(coredns_dns_request_duration_seconds_bucket[5m])) by (le)) * 1000", "legendFormat": "p99 latency"}], "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16}}
+      ],
+      "time": {"from": "now-1h", "to": "now"},
+      "refresh": "30s"
+    }
+  kubernetes-storage-jobs.json: |
+    {
+      "title": "Storage & Jobs",
+      "uid": "k8s-storage-jobs",
+      "schemaVersion": 30,
+      "tags": ["kubernetes", "storage", "jobs"],
+      "panels": [
+        {"title": "PVC Usage by Volume", "type": "timeseries", "datasource": "Prometheus", "targets": [{"expr": "kubelet_volume_stats_used_bytes / 1024 / 1024 / 1024", "legendFormat": "{{namespace}}/{{persistentvolumeclaim}} GB used"}], "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}},
+        {"title": "PVC Available Space (GB)", "type": "timeseries", "datasource": "Prometheus", "targets": [{"expr": "kubelet_volume_stats_available_bytes / 1024 / 1024 / 1024", "legendFormat": "{{namespace}}/{{persistentvolumeclaim}} GB free"}], "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}},
+        {"title": "Container Filesystem Usage (MB)", "type": "timeseries", "datasource": "Prometheus", "targets": [{"expr": "topk(10, sum(container_fs_usage_bytes{container!=\"\"}) by (namespace, pod)) / 1024 / 1024", "legendFormat": "{{namespace}}/{{pod}}"}], "gridPos": {"h": 8, "w": 24, "x": 0, "y": 8}},
+        {"title": "Job Success/Failure", "type": "timeseries", "datasource": "Prometheus", "targets": [{"expr": "kube_job_status_succeeded", "legendFormat": "{{namespace}}/{{job_name}} succeeded"}, {"expr": "kube_job_status_failed", "legendFormat": "{{namespace}}/{{job_name}} failed"}], "gridPos": {"h": 8, "w": 24, "x": 0, "y": 16}},
+        {"title": "API Server Request Rate", "type": "timeseries", "datasource": "Prometheus", "targets": [{"expr": "sum(rate(apiserver_request_total[5m])) by (verb)", "legendFormat": "{{verb}}"}], "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24}},
+        {"title": "API Server Error Rate (5xx)", "type": "timeseries", "datasource": "Prometheus", "targets": [{"expr": "sum(rate(apiserver_request_total{code=~\"5..\"}[5m])) by (resource)", "legendFormat": "{{resource}}"}], "gridPos": {"h": 8, "w": 12, "x": 12, "y": 24}}
+      ],
+      "time": {"from": "now-1h", "to": "now"},
+      "refresh": "30s"
+    }

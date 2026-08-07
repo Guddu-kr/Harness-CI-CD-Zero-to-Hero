@@ -47,8 +47,16 @@ spec:
               mountPath: /etc/grafana/provisioning/datasources
             - name: grafana-dashboard-provisioning
               mountPath: /etc/grafana/provisioning/dashboards
-            - name: grafana-dashboards
-              mountPath: /var/lib/grafana/dashboards
+            - name: grafana-dashboards-cluster
+              mountPath: /var/lib/grafana/dashboards/cluster
+            - name: grafana-dashboards-nodes
+              mountPath: /var/lib/grafana/dashboards/nodes
+            - name: grafana-dashboards-pods
+              mountPath: /var/lib/grafana/dashboards/pods
+            - name: grafana-dashboards-platform
+              mountPath: /var/lib/grafana/dashboards/platform
+            - name: grafana-dashboards-data-layer
+              mountPath: /var/lib/grafana/dashboards/data-layer
       volumes:
         - name: grafana-datasources
           configMap:
@@ -56,6 +64,18 @@ spec:
         - name: grafana-dashboard-provisioning
           configMap:
             name: grafana-dashboard-provisioning
-        - name: grafana-dashboards
+        - name: grafana-dashboards-cluster
           configMap:
             name: grafana-dashboards-k8s
+        - name: grafana-dashboards-nodes
+          configMap:
+            name: grafana-dashboards-nodes
+        - name: grafana-dashboards-pods
+          configMap:
+            name: grafana-dashboards-pods
+        - name: grafana-dashboards-platform
+          configMap:
+            name: grafana-dashboards-platform
+        - name: grafana-dashboards-data-layer
+          configMap:
+            name: grafana-dashboards-data-layer

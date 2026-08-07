@@ -1,4 +1,5 @@
-# Pre-built Kubernetes dashboard — shows data immediately in Grafana
+# Pre-built Kubernetes dashboards — auto-provisioned on Grafana startup
+# Covers: Cluster, Nodes, Pods, Namespaces, Network, Storage, Deployments
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -12,70 +13,23 @@ data:
       "title": "Kubernetes Cluster Overview",
       "uid": "k8s-cluster",
       "schemaVersion": 30,
+      "tags": ["kubernetes", "cluster"],
       "panels": [
-        {
-          "title": "Total Pods Running",
-          "type": "stat",
-          "datasource": "Prometheus",
-          "targets": [{"expr": "sum(kube_pod_status_phase{phase=\"Running\"})"}],
-          "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0}
-        },
-        {
-          "title": "Total Nodes",
-          "type": "stat",
-          "datasource": "Prometheus",
-          "targets": [{"expr": "count(kube_node_info)"}],
-          "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0}
-        },
-        {
-          "title": "CPU Usage %",
-          "type": "gauge",
-          "datasource": "Prometheus",
-          "targets": [{"expr": "100 - (avg(rate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)"}],
-          "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0}
-        },
-        {
-          "title": "Memory Usage %",
-          "type": "gauge",
-          "datasource": "Prometheus",
-          "targets": [{"expr": "(1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100"}],
-          "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0}
-        },
-        {
-          "title": "Pod CPU Usage by Namespace",
-          "type": "timeseries",
-          "datasource": "Prometheus",
-          "targets": [{"expr": "sum(rate(container_cpu_usage_seconds_total{namespace!=\"\"}[5m])) by (namespace)", "legendFormat": "{{namespace}}"}],
-          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4}
-        },
-        {
-          "title": "Pod Memory Usage by Namespace (MB)",
-          "type": "timeseries",
-          "datasource": "Prometheus",
-          "targets": [{"expr": "sum(container_memory_working_set_bytes{namespace!=\"\"}) by (namespace) / 1024 / 1024", "legendFormat": "{{namespace}} MB"}],
-          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4}
-        },
-        {
-          "title": "Pod Restarts (indicates crashes)",
-          "type": "timeseries",
-          "datasource": "Prometheus",
-          "targets": [{"expr": "sum(kube_pod_container_status_restarts_total) by (namespace, pod)", "legendFormat": "{{namespace}}/{{pod}}"}],
-          "gridPos": {"h": 8, "w": 24, "x": 0, "y": 12}
-        },
-        {
-          "title": "Network Received (bytes/s)",
-          "type": "timeseries",
-          "datasource": "Prometheus",
-          "targets": [{"expr": "sum(rate(container_network_receive_bytes_total{namespace!=\"\"}[5m])) by (namespace)", "legendFormat": "{{namespace}}"}],
-          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 20}
-        },
-        {
-          "title": "Network Transmitted (bytes/s)",
-          "type": "timeseries",
-          "datasource": "Prometheus",
-          "targets": [{"expr": "sum(rate(container_network_transmit_bytes_total{namespace!=\"\"}[5m])) by (namespace)", "legendFormat": "{{namespace}}"}],
-          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 20}
-        }
+        {"title": "Total Pods Running", "type": "stat", "datasource": "Prometheus", "targets": [{"expr": "sum(kube_pod_status_phase{phase=\"Running\"})"}], "gridPos": {"h": 4, "w": 4, "x": 0, "y": 0}},
+        {"title": "Total Pods Pending", "type": "stat", "datasource": "Prometheus", "targets": [{"expr": "sum(kube_pod_status_phase{phase=\"Pending\"})"}], "gridPos": {"h": 4, "w": 4, "x": 4, "y": 0}, "fieldConfig": {"defaults": {"color": {"mode": "fixed", "fixedColor": "yellow"}}}},
+        {"title": "Total Pods Failed", "type": "stat", "datasource": "Prometheus", "targets": [{"expr": "sum(kube_pod_status_phase{phase=\"Failed\"})"}], "gridPos": {"h": 4, "w": 4, "x": 8, "y": 0}, "fieldConfig": {"defaults": {"color": {"mode": "fixed", "fixedColor": "red"}}}},
+        {"title": "Total Nodes", "type": "stat", "datasource": "Prometheus", "targets": [{"expr": "count(kube_node_info)"}], "gridPos": {"h": 4, "w": 4, "x": 12, "y": 0}},
+        {"title": "Namespaces", "type": "stat", "datasource": "Prometheus", "targets": [{"expr": "count(kube_namespace_labels)"}], "gridPos": {"h": 4, "w": 4, "x": 16, "y": 0}},
+        {"title": "Deployments", "type": "stat", "datasource": "Prometheus", "targets": [{"expr": "count(kube_deployment_labels)"}], "gridPos": {"h": 4, "w": 4, "x": 20, "y": 0}},
+        {"title": "Cluster CPU Usage %", "type": "gauge", "datasource": "Prometheus", "targets": [{"expr": "100 - (avg(rate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)"}], "gridPos": {"h": 6, "w": 6, "x": 0, "y": 4}, "fieldConfig": {"defaults": {"max": 100, "thresholds": {"steps": [{"value": 0, "color": "green"}, {"value": 70, "color": "yellow"}, {"value": 90, "color": "red"}]}}}},
+        {"title": "Cluster Memory Usage %", "type": "gauge", "datasource": "Prometheus", "targets": [{"expr": "(1 - (sum(node_memory_MemAvailable_bytes) / sum(node_memory_MemTotal_bytes))) * 100"}], "gridPos": {"h": 6, "w": 6, "x": 6, "y": 4}, "fieldConfig": {"defaults": {"max": 100, "thresholds": {"steps": [{"value": 0, "color": "green"}, {"value": 70, "color": "yellow"}, {"value": 90, "color": "red"}]}}}},
+        {"title": "Cluster Disk Usage %", "type": "gauge", "datasource": "Prometheus", "targets": [{"expr": "(1 - (sum(node_filesystem_avail_bytes{mountpoint=\"/\"}) / sum(node_filesystem_size_bytes{mountpoint=\"/\"}))) * 100"}], "gridPos": {"h": 6, "w": 6, "x": 12, "y": 4}, "fieldConfig": {"defaults": {"max": 100, "thresholds": {"steps": [{"value": 0, "color": "green"}, {"value": 70, "color": "yellow"}, {"value": 90, "color": "red"}]}}}},
+        {"title": "Container Restarts (last 1h)", "type": "stat", "datasource": "Prometheus", "targets": [{"expr": "sum(increase(kube_pod_container_status_restarts_total[1h]))"}], "gridPos": {"h": 6, "w": 6, "x": 18, "y": 4}, "fieldConfig": {"defaults": {"color": {"mode": "fixed", "fixedColor": "orange"}}}},
+        {"title": "CPU Usage by Namespace", "type": "timeseries", "datasource": "Prometheus", "targets": [{"expr": "sum(rate(container_cpu_usage_seconds_total{namespace!=\"\"}[5m])) by (namespace)", "legendFormat": "{{namespace}}"}], "gridPos": {"h": 8, "w": 12, "x": 0, "y": 10}},
+        {"title": "Memory Usage by Namespace (MB)", "type": "timeseries", "datasource": "Prometheus", "targets": [{"expr": "sum(container_memory_working_set_bytes{namespace!=\"\"}) by (namespace) / 1024 / 1024", "legendFormat": "{{namespace}}"}], "gridPos": {"h": 8, "w": 12, "x": 12, "y": 10}},
+        {"title": "Network Received (bytes/s)", "type": "timeseries", "datasource": "Prometheus", "targets": [{"expr": "sum(rate(container_network_receive_bytes_total{namespace!=\"\"}[5m])) by (namespace)", "legendFormat": "{{namespace}}"}], "gridPos": {"h": 8, "w": 12, "x": 0, "y": 18}},
+        {"title": "Network Transmitted (bytes/s)", "type": "timeseries", "datasource": "Prometheus", "targets": [{"expr": "sum(rate(container_network_transmit_bytes_total{namespace!=\"\"}[5m])) by (namespace)", "legendFormat": "{{namespace}}"}], "gridPos": {"h": 8, "w": 12, "x": 12, "y": 18}},
+        {"title": "Pod Restarts by Pod", "type": "timeseries", "datasource": "Prometheus", "targets": [{"expr": "sum(kube_pod_container_status_restarts_total) by (namespace, pod)", "legendFormat": "{{namespace}}/{{pod}}"}], "gridPos": {"h": 8, "w": 24, "x": 0, "y": 26}}
       ],
       "time": {"from": "now-1h", "to": "now"},
       "refresh": "30s"

@@ -1,0 +1,42 @@
+# Platform/Deployment metrics — what DevOps teams monitor daily
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards-platform
+  namespace: monitoring
+  labels:
+    app: grafana
+data:
+  kubernetes-deployments.json: |
+    {
+      "title": "Deployments & StatefulSets",
+      "uid": "k8s-deployments",
+      "schemaVersion": 30,
+      "tags": ["kubernetes", "deployments"],
+      "panels": [
+        {"title": "Deployment Replicas (desired vs available)", "type": "timeseries", "datasource": "Prometheus", "targets": [{"expr": "kube_deployment_spec_replicas", "legendFormat": "{{namespace}}/{{deployment}} desired"}, {"expr": "kube_deployment_status_replicas_available", "legendFormat": "{{namespace}}/{{deployment}} available"}], "gridPos": {"h": 8, "w": 24, "x": 0, "y": 0}},
+        {"title": "Deployment Unavailable Replicas", "type": "timeseries", "datasource": "Prometheus", "targets": [{"expr": "kube_deployment_status_replicas_unavailable > 0", "legendFormat": "{{namespace}}/{{deployment}}"}], "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}},
+        {"title": "StatefulSet Replicas", "type": "timeseries", "datasource": "Prometheus", "targets": [{"expr": "kube_statefulset_replicas", "legendFormat": "{{namespace}}/{{statefulset}} desired"}, {"expr": "kube_statefulset_status_replicas_ready", "legendFormat": "{{namespace}}/{{statefulset}} ready"}], "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}},
+        {"title": "DaemonSet Desired vs Ready", "type": "timeseries", "datasource": "Prometheus", "targets": [{"expr": "kube_daemonset_status_desired_number_scheduled", "legendFormat": "{{namespace}}/{{daemonset}} desired"}, {"expr": "kube_daemonset_status_number_ready", "legendFormat": "{{namespace}}/{{daemonset}} ready"}], "gridPos": {"h": 8, "w": 24, "x": 0, "y": 16}},
+        {"title": "PVC Usage (Bound vs Pending)", "type": "piechart", "datasource": "Prometheus", "targets": [{"expr": "sum(kube_persistentvolumeclaim_status_phase{phase=\"Bound\"})", "legendFormat": "Bound"}, {"expr": "sum(kube_persistentvolumeclaim_status_phase{phase=\"Pending\"})", "legendFormat": "Pending"}], "gridPos": {"h": 8, "w": 8, "x": 0, "y": 24}},
+        {"title": "PV Capacity (GB)", "type": "table", "datasource": "Prometheus", "targets": [{"expr": "kube_persistentvolume_capacity_bytes / 1024 / 1024 / 1024", "legendFormat": "{{persistentvolume}}", "format": "table", "instant": true}], "gridPos": {"h": 8, "w": 16, "x": 8, "y": 24}}
+      ],
+      "time": {"from": "now-1h", "to": "now"},
+      "refresh": "30s"
+    }
+  kubernetes-resource-quotas.json: |
+    {
+      "title": "Resource Requests & Limits",
+      "uid": "k8s-resources",
+      "schemaVersion": 30,
+      "tags": ["kubernetes", "resources"],
+      "panels": [
+        {"title": "CPU Requests vs Usage by Namespace", "type": "timeseries", "datasource": "Prometheus", "targets": [{"expr": "sum(kube_pod_container_resource_requests{resource=\"cpu\"}) by (namespace)", "legendFormat": "{{namespace}} requested"}, {"expr": "sum(rate(container_cpu_usage_seconds_total{container!=\"\"}[5m])) by (namespace)", "legendFormat": "{{namespace}} actual"}], "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}},
+        {"title": "Memory Requests vs Usage by Namespace (MB)", "type": "timeseries", "datasource": "Prometheus", "targets": [{"expr": "sum(kube_pod_container_resource_requests{resource=\"memory\"}) by (namespace) / 1024 / 1024", "legendFormat": "{{namespace}} requested"}, {"expr": "sum(container_memory_working_set_bytes{container!=\"\"}) by (namespace) / 1024 / 1024", "legendFormat": "{{namespace}} actual"}], "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}},
+        {"title": "CPU Limits vs Usage", "type": "timeseries", "datasource": "Prometheus", "targets": [{"expr": "sum(kube_pod_container_resource_limits{resource=\"cpu\"}) by (namespace)", "legendFormat": "{{namespace}} limit"}, {"expr": "sum(rate(container_cpu_usage_seconds_total{container!=\"\"}[5m])) by (namespace)", "legendFormat": "{{namespace}} usage"}], "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}},
+        {"title": "Memory Limits vs Usage (MB)", "type": "timeseries", "datasource": "Prometheus", "targets": [{"expr": "sum(kube_pod_container_resource_limits{resource=\"memory\"}) by (namespace) / 1024 / 1024", "legendFormat": "{{namespace}} limit"}, {"expr": "sum(container_memory_working_set_bytes{container!=\"\"}) by (namespace) / 1024 / 1024", "legendFormat": "{{namespace}} usage"}], "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}},
+        {"title": "OOM Killed Containers", "type": "timeseries", "datasource": "Prometheus", "targets": [{"expr": "sum(kube_pod_container_status_terminated_reason{reason=\"OOMKilled\"}) by (namespace, pod)", "legendFormat": "{{namespace}}/{{pod}}"}], "gridPos": {"h": 8, "w": 24, "x": 0, "y": 16}}
+      ],
+      "time": {"from": "now-1h", "to": "now"},
+      "refresh": "30s"
+    }
