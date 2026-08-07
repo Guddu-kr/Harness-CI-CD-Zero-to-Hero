@@ -393,7 +393,7 @@ helm install argocd gitops-agent/gitops-helm --values override.yaml --namespace 
 
 | Secret ID | Value |
 |-----------|-------|
-| `shop_app_key` | `base64:dGhpc2lzYWR1bW15a2V5Zm9ydGVzdGluZzEyMw==` |
+| `shop_app_key` | `base64:dDJmWnVQYUhSME5SZGhKYW1WdnRSQkoyQzFYeWtyYWI=` |
 | `shop_db_username` | `shop_admin` |
 | `shop_db_password` | `ShopDB@2026secure` |
 | `shop_stripe_key` | `pk_test_DUMMY_KEY_REPLACE_WITH_YOURS` |
