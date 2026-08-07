@@ -473,9 +473,7 @@ kubectl get svc jaeger-query -n tracing
 ```
 ---
 
-## Step 12: Create Prometheus Connector + Monitored Service
-
-### Step 12.1: Create Prometheus Connector
+## Step 12: Create Prometheus Connector
 
 1. Go to **Project Settings** → **Connectors** → **+ New Connector**
 2. Select: **Monitoring and Logging Systems** → **Prometheus**
@@ -488,39 +486,6 @@ kubectl get svc jaeger-query -n tracing
    - Select: **Connect only via Delegates with tag** → `eks-k8s-delegate`
 6. **Screen 4 (Connection Test):**
    - Click **Finish** → ✅ Success
-
-### Step 12.2: Create Monitored Service
-
-1. Go to left sidebar → **Monitored Services** → **+ New Monitored Service**
-2. Fill in:
-   - **Service:** Select `shop-ecommerce`
-   - **Environment:** Select `production`
-   - **Type:** Application
-3. Click **Save**
-4. Inside the Monitored Service → **+ Add Health Source**
-5. Select: **Prometheus**
-6. Configure:
-   - Health Source Name: `prometheus-metrics`
-   - Connector: Select `prometheus`
-   - Feature: **Prometheus Metrics**
-7. **Metric Configuration:**
-   - **Metric 1 (Request Count):**
-     - Query: `sum(rate(nginx_http_requests_total{namespace="shop-ecommerce"}[5m]))`
-     - Metric Name: `request_rate`
-     - Category: Performance
-     - Thresholds: Higher is better
-   - **Metric 2 (Error Rate):**
-     - Query: `sum(rate(nginx_http_requests_total{namespace="shop-ecommerce",status=~"5.."}[5m]))`
-     - Metric Name: `error_rate`
-     - Category: Errors
-     - Thresholds: Lower is better
-8. Click **Submit** → Save
-
-> **How Verify step works in the pipeline:**
-> - After GitOpsSync deploys new version → Verify step monitors Prometheus for 5 minutes
-> - Compares current error rate vs baseline (previous deployment)
-> - If error rate increases significantly → Verify FAILS → rollback triggers
-> - If metrics are stable → Verify PASSES → pipeline succeeds
 
 ---
 
@@ -565,6 +530,55 @@ kubectl get svc -n shop-ecommerce
 
 ```
 
+
+---
+
+## Step 14: Configure Monitored Service (AFTER first successful deploy)
+
+> This step is only possible AFTER the pipeline (Step 13) runs successfully. The Monitored Service auto-creates after the first deploy.
+
+1. Go to left sidebar → **Monitored Services**
+2. Find `shop-ecommerce_production` (auto-created after deploy)
+3. Click on it → **+ Add Health Source**
+4. Select: **Prometheus**
+5. Configure:
+   - Health Source Name: `prometheus-metrics`
+   - Connector: Select `prometheus` (from Step 12)
+   - Feature: **Prometheus Metrics**
+6. **Metric Configuration:**
+   - **Metric 1 (Request Count):**
+     - Query: `sum(rate(nginx_http_requests_total{namespace="shop-ecommerce"}[5m]))`
+     - Metric Name: `request_rate`
+     - Category: Performance
+     - Thresholds: Higher is better
+   - **Metric 2 (Error Rate):**
+     - Query: `sum(rate(nginx_http_requests_total{namespace="shop-ecommerce",status=~"5.."}[5m]))`
+     - Metric Name: `error_rate`
+     - Category: Errors
+     - Thresholds: Lower is better
+7. Click **Submit** → Save
+
+> **After this:** Re-run the pipeline → the Verify step will now compare metrics before/after deployment. If degraded → auto-rollback.
+
+---
+
+## Step 15: Enable Auto-Sync
+
+1. **GitOps** → **Applications** → `shop-ecommerce` → **App Details**
+2. Find **Sync Policy** → Toggle **"Automated"** → ON
+3. Now future Git changes auto-deploy without running the pipeline
+
+---
+
+## Step 16: Test Self-Heal
+
+```bash
+kubectl delete pod -l app=shop-ecommerce -n shop-ecommerce
+kubectl get pods -n shop-ecommerce -w
+# ArgoCD recreates the pod within seconds
+```
+
+---
 
 ## Troubleshooting: Reset Observability Stack
 
