@@ -211,16 +211,33 @@ pipeline:
                       - applicationName: shop-ecommerce # ← CHANGE: your GitOps app name
                         agentId: gitopsagent # ← CHANGE: your agent ID
 
+            # ============================================
+            # ROLLBACK STEPS (auto-triggered on failure)
+            # If GitOpsSync or GetAppDetails fails:
+            #   1. RevertPR: Creates a revert commit undoing the image tag change
+            #   2. Merge Revert PR: Merges the revert into main (values.yaml goes back to old tag)
+            #   3. Rollback Sync: ArgoCD syncs to reverted state (deploys previous version)
+            # ============================================
             rollbackSteps:
-              # Rollback Step 1: Reverts the merged PR (creates a new revert commit in Git)
+              # Rollback Step 1: Creates a new PR that reverts the commit made by UpdateReleaseRepo
               - step:
-                  type: GitOpsRevertPR
+                  type: RevertPR
                   name: Revert PR
                   identifier: revert_pr
                   timeout: 10m
-                  spec: {}
+                  spec:
+                    commitId: <+pipeline.stages.gitops_deploy.spec.execution.steps.update_release_repo.updateReleaseRepoOutcome.commitId>
 
-              # Rollback Step 2: Syncs ArgoCD to the reverted state (applies previous manifests)
+              # Rollback Step 2: Merges the revert PR so main branch has the old image tag again
+              - step:
+                  type: MergePR
+                  name: Merge Revert PR
+                  identifier: merge_revert_pr
+                  timeout: 10m
+                  spec:
+                    deleteSourceBranch: true
+
+              # Rollback Step 3: Forces ArgoCD to sync NOW — deploys the old version back
               - step:
                   type: GitOpsSync
                   name: Rollback Sync
@@ -232,8 +249,8 @@ pipeline:
                     applyOnly: false
                     forceApply: false
                     applicationsList:
-                      - applicationName: shop-ecommerce # ← CHANGE: your GitOps app name
-                        agentId: gitopsagent # ← CHANGE: your agent ID
+                      - applicationName: shop-ecommerce
+                        agentId: gitopsagent
                     retryStrategy: {}
                     retry: false
                     syncOptions:
