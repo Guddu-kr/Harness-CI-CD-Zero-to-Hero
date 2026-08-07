@@ -52,6 +52,7 @@ spec:
           effect: NoSchedule
         - key: node-role.kubernetes.io/master
           effect: NoSchedule
+        - operator: Exists
       containers:
         - name: fluentd
           image: fluent/fluentd-kubernetes-daemonset:v1.16-debian-elasticsearch8-1
