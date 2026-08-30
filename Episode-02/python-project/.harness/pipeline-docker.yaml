@@ -35,7 +35,7 @@ pipeline:
         ###############################################
         # CHANGE THIS: Your repo name
         ###############################################
-        repoName: Harness-CI-CD-Zero-to-Hero
+        repoName: Guddu-kr/Harness-CI-CD-Zero-to-Hero
         build: <+input>
   stages:
     - stage:
