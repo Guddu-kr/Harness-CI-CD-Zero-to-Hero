@@ -31,7 +31,7 @@ pipeline:
         ##############################################
         # CHANGE THIS: Your GitHub connector
         ############################################
-        connectorRef: account.github
+        connectorRef: account.Github_OAuth_1786115103240
         ###############################################
         # CHANGE THIS: Your repo name
         ###############################################
